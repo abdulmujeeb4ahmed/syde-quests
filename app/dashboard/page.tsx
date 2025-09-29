@@ -47,27 +47,43 @@ export default function Dashboard() {
       
       try {
         // Get user location
-        let location = userState.preferences.homeLocation;
-        if (location) {
-          setUserLocation({
-            lat: location.lat,
-            lng: location.lng,
-            city: location.city,
-            state: location.state
-          });
+        let currentLocation = null;
+        let locationInfo = null;
+        
+        console.log('User state preferences:', userState.preferences.homeLocation);
+        
+        if (userState.preferences.homeLocation) {
+          console.log('Using stored home location');
+          currentLocation = {
+            lat: userState.preferences.homeLocation.lat,
+            lng: userState.preferences.homeLocation.lng
+          };
+          locationInfo = {
+            city: userState.preferences.homeLocation.city,
+            state: userState.preferences.homeLocation.state
+          };
         } else {
+          console.log('Getting current location...');
           try {
-            const currentLocation = await getCurrentLocation();
-            const locationInfo = await reverseGeocode(currentLocation.lat, currentLocation.lng);
-            setUserLocation({
-              lat: currentLocation.lat,
-              lng: currentLocation.lng,
-              city: locationInfo.city,
-              state: locationInfo.state
-            });
+            currentLocation = await getCurrentLocation();
+            console.log('Got current location:', currentLocation);
+            locationInfo = await reverseGeocode(currentLocation.lat, currentLocation.lng);
+            console.log('Got location info:', locationInfo);
           } catch (error) {
             console.error('Failed to get current location:', error);
           }
+        }
+        
+        console.log('Final location data:', { currentLocation, locationInfo });
+
+        // Set user location state
+        if (currentLocation && locationInfo) {
+          setUserLocation({
+            lat: currentLocation.lat,
+            lng: currentLocation.lng,
+            city: locationInfo.city,
+            state: locationInfo.state
+          });
         }
 
         // Fetch quests with retry logic and location parameters
@@ -77,9 +93,9 @@ export default function Dashboard() {
           try {
             // Build API URL with location parameters
             const apiUrl = new URL('/api/quests', window.location.origin);
-            if (userLocation) {
-              apiUrl.searchParams.set('lat', userLocation.lat.toString());
-              apiUrl.searchParams.set('lng', userLocation.lng.toString());
+            if (currentLocation) {
+              apiUrl.searchParams.set('lat', currentLocation.lat.toString());
+              apiUrl.searchParams.set('lng', currentLocation.lng.toString());
               apiUrl.searchParams.set('maxDistance', '50'); // 50km radius
             }
             
@@ -89,6 +105,7 @@ export default function Dashboard() {
             }
             const data = await response.json();
             quests = data.quests;
+            console.log(`Fetched ${quests.length} quests from API for location:`, currentLocation);
             break;
           } catch (error) {
             console.error(`Failed to fetch quests (${4 - retries}/3):`, error);
@@ -96,6 +113,38 @@ export default function Dashboard() {
             if (retries > 0) {
               await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
             }
+          }
+        }
+        
+        // If we have location but no quests, try to get dynamic places
+        if (quests.length === 0 && currentLocation) {
+          try {
+            console.log('No hardcoded quests found, fetching dynamic places...');
+            const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=10&limit=20`);
+            if (placesResponse.ok) {
+              const placesData = await placesResponse.json();
+              if (placesData.places && placesData.places.length > 0) {
+                // Convert places to quests
+                const dynamicQuests = placesData.places.map((place: any, index: number) => ({
+                  id: `dynamic-${place.id}`,
+                  title: `${place.name} Discovery`,
+                  description: place.description,
+                  category: place.category,
+                  duration_min: Math.floor(Math.random() * 120) + 30, // 30-150 minutes
+                  difficulty: ['Easy', 'Medium', 'Hard'][Math.floor(Math.random() * 3)],
+                  lat: place.lat,
+                  lng: place.lng,
+                  city: place.city,
+                  tags: [place.category.toLowerCase(), 'local', 'discovery'],
+                  cover_url: `https://images.unsplash.com/photo-${1500000000000 + index}?w=400`,
+                  created_at: new Date().toISOString()
+                }));
+                quests = dynamicQuests;
+                console.log(`Found ${dynamicQuests.length} dynamic quests for your location`);
+              }
+            }
+          } catch (error) {
+            console.error('Failed to fetch dynamic places:', error);
           }
         }
         
@@ -198,17 +247,27 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-sq-text mb-2">
-            Welcome back, Adventurer! 🚀
-          </h2>
-          <p className="text-sq-text-muted">
-            Discover new quests and continue your journey
-            {userLocation && (
-              <span className="ml-2 text-sq-primary">
-                • {userLocation.city}, {userLocation.state}
-              </span>
-            )}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold text-sq-text mb-2">
+                Welcome back, Adventurer! 🚀
+              </h2>
+              <p className="text-sq-text-muted">
+                Discover new quests and continue your journey
+                {userLocation && (
+                  <span className="ml-2 text-sq-primary">
+                    • {userLocation.city}, {userLocation.state}
+                  </span>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="btn-secondary text-sm"
+            >
+              🔄 Refresh Location
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
