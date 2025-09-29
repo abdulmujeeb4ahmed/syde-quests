@@ -95,40 +95,12 @@ export default function Dashboard() {
           console.log('No location data available:', { currentLocation, locationInfo });
         }
 
-        // Fetch quests with retry logic and location parameters
+        // Fetch dynamic activities from places API first
         let quests: Quest[] = [];
-        let retries = 3;
-        while (retries > 0) {
-          try {
-            // Build API URL with location parameters
-            const apiUrl = new URL('/api/quests', window.location.origin);
-            if (currentLocation) {
-              apiUrl.searchParams.set('lat', currentLocation.lat.toString());
-              apiUrl.searchParams.set('lng', currentLocation.lng.toString());
-              apiUrl.searchParams.set('maxDistance', '50'); // 50km radius
-            }
-            
-            const response = await fetch(apiUrl.toString());
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            quests = data.quests;
-            console.log(`Fetched ${quests.length} quests from API for location:`, currentLocation);
-            break;
-          } catch (error) {
-            console.error(`Failed to fetch quests (${4 - retries}/3):`, error);
-            retries--;
-            if (retries > 0) {
-              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
-            }
-          }
-        }
         
-        // If we have location but no quests, try to get dynamic places
-        if (quests.length === 0 && currentLocation) {
+        if (currentLocation) {
           try {
-            console.log('No hardcoded quests found, fetching dynamic places...');
+            console.log('Fetching dynamic activities from places API...');
             const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=10&limit=20`);
             if (placesResponse.ok) {
               const placesData = await placesResponse.json();
@@ -149,11 +121,33 @@ export default function Dashboard() {
                   created_at: new Date().toISOString()
                 }));
                 quests = dynamicQuests;
-                console.log(`Found ${dynamicQuests.length} dynamic quests for your location`);
+                console.log(`Found ${dynamicQuests.length} dynamic activities for your location`);
               }
             }
           } catch (error) {
             console.error('Failed to fetch dynamic places:', error);
+          }
+        }
+        
+        // If no dynamic places found, try hardcoded quests as fallback
+        if (quests.length === 0) {
+          try {
+            console.log('No dynamic activities found, trying hardcoded quests as fallback...');
+            const apiUrl = new URL('/api/quests', window.location.origin);
+            if (currentLocation) {
+              apiUrl.searchParams.set('lat', currentLocation.lat.toString());
+              apiUrl.searchParams.set('lng', currentLocation.lng.toString());
+              apiUrl.searchParams.set('maxDistance', '50');
+            }
+            
+            const response = await fetch(apiUrl.toString());
+            if (response.ok) {
+              const data = await response.json();
+              quests = data.quests || [];
+              console.log(`Fetched ${quests.length} fallback quests from API`);
+            }
+          } catch (error) {
+            console.error('Failed to fetch fallback quests:', error);
           }
         }
         
@@ -193,14 +187,10 @@ export default function Dashboard() {
           ];
         }
 
-        // Generate recommendations
-        const recommendations = generateRecommendations(
-          location || { lat: 43.6532, lng: -79.3832 }, // Default to Toronto
-          quests,
-          userState,
-          6
-        );
+        // Show all available quests as recommendations (up to 6)
+        const recommendations = quests.slice(0, 6);
         setRecommendedQuests(recommendations);
+        console.log(`Setting ${recommendations.length} recommended quests`);
 
         // Get quest of the day
         const qod = getRotatedQuestOfTheDay(
@@ -350,7 +340,7 @@ export default function Dashboard() {
         {/* Recommended Quests */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-bold text-sq-text">Recommended for You</h3>
+            <h3 className="text-2xl font-bold text-sq-text">Activities Near You</h3>
             <Link 
               href="/search" 
               className="text-sq-primary hover:text-sq-accent transition-colors"

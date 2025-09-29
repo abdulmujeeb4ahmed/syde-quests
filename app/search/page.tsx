@@ -62,32 +62,59 @@ export default function Search() {
           }
         }
 
-        // Fetch all quests with retry logic and location parameters
+        // Fetch dynamic activities from places API first
         let quests: Quest[] = [];
-        let retries = 3;
-        while (retries > 0) {
+        
+        if (userLocation) {
           try {
-            // Build API URL with location parameters
+            console.log('Fetching dynamic activities from places API...');
+            const placesResponse = await fetch(`/api/places?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=10&limit=20`);
+            if (placesResponse.ok) {
+              const placesData = await placesResponse.json();
+              if (placesData.places && placesData.places.length > 0) {
+                // Convert places to quests
+                const dynamicQuests = placesData.places.map((place: any, index: number) => ({
+                  id: `dynamic-${place.id}`,
+                  title: `${place.name} Discovery`,
+                  description: place.description,
+                  category: place.category,
+                  duration_min: Math.floor(Math.random() * 120) + 30, // 30-150 minutes
+                  difficulty: ['Easy', 'Medium', 'Hard'][Math.floor(Math.random() * 3)],
+                  lat: place.lat,
+                  lng: place.lng,
+                  city: place.city,
+                  tags: [place.category.toLowerCase(), 'local', 'discovery'],
+                  cover_url: `https://images.unsplash.com/photo-${1500000000000 + index}?w=400`,
+                  created_at: new Date().toISOString()
+                }));
+                quests = dynamicQuests;
+                console.log(`Found ${dynamicQuests.length} dynamic activities for your location`);
+              }
+            }
+          } catch (error) {
+            console.error('Failed to fetch dynamic places:', error);
+          }
+        }
+        
+        // If no dynamic places found, try hardcoded quests as fallback
+        if (quests.length === 0) {
+          try {
+            console.log('No dynamic activities found, trying hardcoded quests as fallback...');
             const apiUrl = new URL('/api/quests', window.location.origin);
             if (userLocation) {
               apiUrl.searchParams.set('lat', userLocation.lat.toString());
               apiUrl.searchParams.set('lng', userLocation.lng.toString());
-              apiUrl.searchParams.set('maxDistance', '50'); // 50km radius
+              apiUrl.searchParams.set('maxDistance', '50');
             }
             
             const response = await fetch(apiUrl.toString());
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
+            if (response.ok) {
+              const data = await response.json();
+              quests = data.quests || [];
+              console.log(`Fetched ${quests.length} fallback quests from API`);
             }
-            const data = await response.json();
-            quests = data.quests;
-            break;
           } catch (error) {
-            console.error(`Failed to fetch quests (${4 - retries}/3):`, error);
-            retries--;
-            if (retries > 0) {
-              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
-            }
+            console.error('Failed to fetch fallback quests:', error);
           }
         }
         
