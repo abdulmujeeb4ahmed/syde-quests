@@ -31,7 +31,7 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-sq-bg flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4 animate-pulse-gentle">🎯</div>
+          <div className="text-6xl mb-4 animate-neon-glow">🎯</div>
           <p className="text-sq-text-muted">Loading your adventure...</p>
         </div>
       </div>

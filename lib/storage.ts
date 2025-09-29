@@ -101,8 +101,8 @@ export function completeQuest(questId: string, rating: number, notes: string): v
     notes,
   };
   
-  // Award points (50 base + bonus for rating)
-  const points = 50 + (rating * 10);
+  // Award fixed points for completion
+  const points = 50;
   state.points += points;
   
   // Check for badge milestones

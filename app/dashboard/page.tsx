@@ -49,8 +49,8 @@ export default function Dashboard() {
         // Get user location
         let location = userState.preferences.homeLocation;
         if (location) {
-          setUserLocation({ 
-            lat: location.lat, 
+          setUserLocation({
+            lat: location.lat,
             lng: location.lng,
             city: location.city,
             state: location.state
@@ -70,12 +70,20 @@ export default function Dashboard() {
           }
         }
 
-        // Fetch quests with retry logic
+        // Fetch quests with retry logic and location parameters
         let quests: Quest[] = [];
         let retries = 3;
         while (retries > 0) {
           try {
-            const response = await fetch('/api/quests');
+            // Build API URL with location parameters
+            const apiUrl = new URL('/api/quests', window.location.origin);
+            if (userLocation) {
+              apiUrl.searchParams.set('lat', userLocation.lat.toString());
+              apiUrl.searchParams.set('lng', userLocation.lng.toString());
+              apiUrl.searchParams.set('maxDistance', '50'); // 50km radius
+            }
+            
+            const response = await fetch(apiUrl.toString());
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -154,7 +162,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-sq-bg flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4 animate-pulse-gentle">🎯</div>
+          <div className="text-6xl mb-4 animate-neon-glow">🎯</div>
           <p className="text-sq-text-muted">Loading your dashboard...</p>
         </div>
       </div>

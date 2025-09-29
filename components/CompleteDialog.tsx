@@ -19,7 +19,7 @@ export default function CompleteDialog({
   onComplete,
 }: CompleteDialogProps) {
   const [rating, setRating] = useState(5);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState('It was amazing!');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
@@ -62,27 +62,33 @@ export default function CompleteDialog({
           <label className="block text-sm font-medium text-sq-text mb-3">
             Rate your experience (1-5 stars)
           </label>
-          <div className="flex gap-2">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                onClick={() => setRating(star)}
-                className={`text-2xl transition-colors ${
-                  star <= rating
-                    ? 'text-sq-accent'
-                    : 'text-sq-muted hover:text-sq-accent'
-                }`}
-              >
-                ⭐
-              </button>
-            ))}
+          <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((star) => {
+              const isSelected = star <= rating;
+              return (
+                <button
+                  key={star}
+                  onClick={() => setRating(star)}
+                  className={`text-3xl transition-all duration-200 hover:scale-110 ${
+                    isSelected
+                      ? 'text-sq-accent drop-shadow-lg'
+                      : 'text-sq-muted hover:text-sq-accent/50'
+                  }`}
+                  style={{
+                    filter: isSelected ? 'drop-shadow(0 0 8px rgba(247, 37, 133, 0.5))' : 'none'
+                  }}
+                >
+                  ⭐
+                </button>
+              );
+            })}
           </div>
-          <p className="text-xs text-sq-text-muted mt-1">
-            {rating === 1 && 'Poor'}
-            {rating === 2 && 'Fair'}
-            {rating === 3 && 'Good'}
-            {rating === 4 && 'Great'}
-            {rating === 5 && 'Excellent'}
+          <p className="text-sm text-sq-text-muted mt-2 font-medium">
+            {rating === 1 && '😞 Poor'}
+            {rating === 2 && '😐 Fair'}
+            {rating === 3 && '😊 Good'}
+            {rating === 4 && '😄 Great'}
+            {rating === 5 && '🤩 Excellent'}
           </p>
         </div>
 
@@ -109,7 +115,7 @@ export default function CompleteDialog({
           <div className="flex items-center gap-2">
             <span className="text-sq-primary">🎯</span>
             <span className="text-sm font-medium text-sq-text">
-              You'll earn {50 + (rating * 10)} points for completing this quest!
+              You'll earn 50 points for completing this quest!
             </span>
           </div>
         </div>

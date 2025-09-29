@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --sq-bg: #0B1220;
-  --sq-primary: #00D1B2;
-  --sq-accent: #F59E0B;
-  --sq-muted: #94A3B8;
-  --sq-card: #0F172A;
+  --sq-bg: #0F172A;
+  --sq-primary: #14F4C4;
+  --sq-accent: #F72585;
+  --sq-muted: #64748B;
+  --sq-card: #1E293B;
   --sq-text: #F8FAFC;
-  --sq-text-muted: #94A3B8;
+  --sq-text-muted: #64748B;
 }
 
 @theme inline {
@@ -51,10 +51,12 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--sq-primary);
   border-radius: 4px;
+  box-shadow: 0 0 5px rgba(20, 244, 196, 0.5);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #00B8A3;
+  background: #0FD9B8;
+  box-shadow: 0 0 8px rgba(20, 244, 196, 0.7);
 }
 
 /* Animations */
@@ -73,6 +75,24 @@ body {
   50% { transform: scale(1.05); }
 }
 
+@keyframes neonGlow {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(20, 244, 196, 0.3), 0 0 10px rgba(20, 244, 196, 0.2);
+  }
+  50% { 
+    box-shadow: 0 0 10px rgba(20, 244, 196, 0.5), 0 0 20px rgba(20, 244, 196, 0.3);
+  }
+}
+
+@keyframes neonPulse {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(247, 37, 133, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 15px rgba(247, 37, 133, 0.6), 0 0 25px rgba(247, 37, 133, 0.4);
+  }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.5s ease-out;
 }
@@ -85,6 +105,14 @@ body {
   animation: pulse 2s infinite;
 }
 
+.animate-neon-glow {
+  animation: neonGlow 2s ease-in-out infinite;
+}
+
+.animate-neon-pulse {
+  animation: neonPulse 1.5s ease-in-out infinite;
+}
+
 /* Quest card hover effects */
 .quest-card {
   transition: all 0.3s ease;
@@ -92,24 +120,26 @@ body {
 
 .quest-card:hover {
   transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 20px 40px rgba(0, 209, 178, 0.15);
+  box-shadow: 0 20px 40px rgba(20, 244, 196, 0.25);
 }
 
 /* Button styles */
 .btn-primary {
-  background: linear-gradient(135deg, var(--sq-primary), #00B8A3);
-  color: white;
+  background: linear-gradient(135deg, var(--sq-primary), #0FD9B8);
+  color: #0F172A;
   border: none;
   border-radius: 12px;
   padding: 12px 24px;
   font-weight: 600;
   transition: all 0.3s ease;
   cursor: pointer;
+  box-shadow: 0 0 20px rgba(20, 244, 196, 0.3);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 209, 178, 0.3);
+  box-shadow: 0 8px 25px rgba(20, 244, 196, 0.5);
+  background: linear-gradient(135deg, #0FD9B8, var(--sq-primary));
 }
 
 .btn-secondary {
@@ -126,20 +156,21 @@ body {
 .btn-secondary:hover {
   border-color: var(--sq-primary);
   color: var(--sq-primary);
+  box-shadow: 0 0 15px rgba(20, 244, 196, 0.2);
 }
 
 /* Card styles */
 .card {
   background: var(--sq-card);
   border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(100, 116, 139, 0.2);
   padding: 24px;
   transition: all 0.3s ease;
 }
 
 .card:hover {
   border-color: var(--sq-primary);
-  box-shadow: 0 8px 32px rgba(0, 209, 178, 0.1);
+  box-shadow: 0 8px 32px rgba(20, 244, 196, 0.2);
 }
 
 /* Badge styles */
@@ -155,19 +186,21 @@ body {
 }
 
 .badge-primary {
-  background: rgba(0, 209, 178, 0.2);
+  background: rgba(20, 244, 196, 0.2);
   color: var(--sq-primary);
   border: 1px solid var(--sq-primary);
+  box-shadow: 0 0 10px rgba(20, 244, 196, 0.3);
 }
 
 .badge-accent {
-  background: rgba(245, 158, 11, 0.2);
+  background: rgba(247, 37, 133, 0.2);
   color: var(--sq-accent);
   border: 1px solid var(--sq-accent);
+  box-shadow: 0 0 10px rgba(247, 37, 133, 0.3);
 }
 
 .badge-muted {
-  background: rgba(148, 163, 184, 0.2);
+  background: rgba(100, 116, 139, 0.2);
   color: var(--sq-muted);
   border: 1px solid var(--sq-muted);
 }
