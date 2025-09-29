@@ -29,36 +29,63 @@ export interface PlacesSearchParams {
 }
 
 /**
+ * Transform OSM data to Place objects
+ */
+function transformPlacesData(data: any[]): Place[] {
+  return data.map((item: any, index: number) => {
+    const address = item.display_name || '';
+    const addressParts = address.split(', ');
+    
+    return {
+      id: `osm-${item.place_id || index}`,
+      name: item.name || item.display_name?.split(',')[0] || 'Unknown Place',
+      category: mapOSMCategory(item.type, item.class),
+      description: generatePlaceDescription(item),
+      lat: parseFloat(item.lat),
+      lng: parseFloat(item.lon),
+      address: address,
+      city: extractCity(addressParts),
+      state: extractState(addressParts),
+      country: extractCountry(addressParts),
+      rating: Math.floor(Math.random() * 2) + 4, // Random 4-5 star rating
+      website: item.extratags?.website,
+      phone: item.extratags?.phone,
+      hours: item.extratags?.opening_hours
+    };
+  });
+}
+
+/**
  * Search for places near a location using OpenStreetMap
  */
 export async function searchPlaces(params: PlacesSearchParams): Promise<Place[]> {
   const { lat, lng, radius = 5, category = 'tourist_attraction', limit = 20 } = params;
   
   try {
-    // Build search query
+    // Build search query - use more general terms
     let query = '';
     if (category === 'restaurant') {
-      query = 'restaurants';
+      query = 'restaurant food';
     } else if (category === 'park') {
-      query = 'parks';
+      query = 'park recreation';
     } else if (category === 'museum') {
-      query = 'museums';
+      query = 'museum gallery';
     } else if (category === 'shopping') {
-      query = 'shopping centers';
+      query = 'shopping store';
     } else {
-      query = 'tourist attractions';
+      query = 'attraction landmark';
     }
     
-    // Add location context
-    const locationQuery = `near ${lat},${lng}`;
-    
+    // Use a broader search approach with viewbox
     const url = new URL('https://nominatim.openstreetmap.org/search');
-    url.searchParams.set('q', `${query} ${locationQuery}`);
+    url.searchParams.set('q', query);
     url.searchParams.set('format', 'json');
     url.searchParams.set('limit', limit.toString());
     url.searchParams.set('addressdetails', '1');
     url.searchParams.set('extratags', '1');
     url.searchParams.set('namedetails', '1');
+    url.searchParams.set('viewbox', `${lng - 0.1},${lat - 0.1},${lng + 0.1},${lat + 0.1}`);
+    url.searchParams.set('bounded', '1');
     
     console.log('Fetching places from:', url.toString());
     
@@ -74,28 +101,34 @@ export async function searchPlaces(params: PlacesSearchParams): Promise<Place[]>
     
     const data = await response.json();
     
-    // Transform the data to our Place interface
-    const places: Place[] = data.map((item: any, index: number) => {
-      const address = item.display_name || '';
-      const addressParts = address.split(', ');
+    // If no results, try a broader search
+    if (!data || data.length === 0) {
+      console.log('No results found, trying broader search...');
+      const fallbackUrl = new URL('https://nominatim.openstreetmap.org/search');
+      fallbackUrl.searchParams.set('q', 'amenity');
+      fallbackUrl.searchParams.set('format', 'json');
+      fallbackUrl.searchParams.set('limit', limit.toString());
+      fallbackUrl.searchParams.set('addressdetails', '1');
+      fallbackUrl.searchParams.set('viewbox', `${lng - 0.2},${lat - 0.2},${lng + 0.2},${lat + 0.2}`);
+      fallbackUrl.searchParams.set('bounded', '1');
       
-      return {
-        id: `osm-${item.place_id || index}`,
-        name: item.name || item.display_name?.split(',')[0] || 'Unknown Place',
-        category: mapOSMCategory(item.type, item.class),
-        description: generatePlaceDescription(item),
-        lat: parseFloat(item.lat),
-        lng: parseFloat(item.lon),
-        address: address,
-        city: extractCity(addressParts),
-        state: extractState(addressParts),
-        country: extractCountry(addressParts),
-        rating: Math.floor(Math.random() * 2) + 4, // Random 4-5 star rating
-        website: item.extratags?.website,
-        phone: item.extratags?.phone,
-        hours: item.extratags?.opening_hours
-      };
-    });
+      const fallbackResponse = await fetch(fallbackUrl.toString(), {
+        headers: {
+          'User-Agent': 'SydeQuests/1.0 (Local Places Discovery App)'
+        }
+      });
+      
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json();
+        if (fallbackData && fallbackData.length > 0) {
+          console.log(`Found ${fallbackData.length} places with fallback search`);
+          return transformPlacesData(fallbackData);
+        }
+      }
+    }
+    
+    // Transform the data to our Place interface
+    const places: Place[] = transformPlacesData(data);
     
     // Filter by radius if specified
     const filteredPlaces = places.filter(place => {

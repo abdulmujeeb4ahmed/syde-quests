@@ -12,12 +12,62 @@ export interface LocationInfo {
  * For MVP, we'll use a simple approximation based on coordinates
  */
 export function reverseGeocode(lat: number, lng: number): Promise<LocationInfo> {
-  return new Promise((resolve) => {
-    // For MVP, we'll use a simple coordinate-based approximation
-    // In production, you'd use a real geocoding service like Google Maps API
+  return new Promise(async (resolve) => {
+    console.log('reverseGeocode called with:', { lat, lng });
+    
+    try {
+      // Use free OpenStreetMap Nominatim API for reverse geocoding
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`;
+      
+      console.log('Fetching location from Nominatim:', url);
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'SydeQuests/1.0 (Local Places Discovery App)'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Nominatim response:', data);
+      
+      if (data && data.address) {
+        const address = data.address;
+        const city = address.city || address.town || address.village || address.hamlet || 'Unknown City';
+        const state = address.state || address.province || 'Unknown State';
+        const country = address.country || 'Unknown Country';
+        
+        const locationInfo: LocationInfo = {
+          lat,
+          lng,
+          city,
+          state,
+          country,
+          address: data.display_name || `${city}, ${state}`
+        };
+        
+        console.log('Resolved location:', locationInfo);
+        resolve(locationInfo);
+        return;
+      }
+    } catch (error) {
+      console.error('Error with Nominatim reverse geocoding:', error);
+    }
+    
+    // Fallback to coordinate-based approximation if API fails
+    console.log('Using fallback coordinate-based geocoding');
     
     // Atlanta, Georgia area approximation
-    if (lat >= 33.6 && lat <= 33.9 && lng >= -84.5 && lng <= -84.2) {
+    console.log('Checking Atlanta range:', { 
+      lat, lng, 
+      latCheck: lat >= 33.6 && lat <= 34.0, 
+      lngCheck: lng >= -84.5 && lng <= -84.1 
+    });
+    if (lat >= 33.6 && lat <= 34.0 && lng >= -84.5 && lng <= -84.1) {
+      console.log('Matched Atlanta coordinates');
       resolve({
         lat,
         lng,
@@ -182,6 +232,7 @@ export function reverseGeocode(lat: number, lng: number): Promise<LocationInfo> 
         address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`
       });
     } else {
+      console.log('No location match found, using fallback');
       resolve({
         lat,
         lng,

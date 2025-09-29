@@ -34,6 +34,11 @@ export default function Dashboard() {
   const [questOfTheDay, setQuestOfTheDay] = useState<Quest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Debug userLocation state changes
+  useEffect(() => {
+    console.log('userLocation state changed:', userLocation);
+  }, [userLocation]);
+
   useEffect(() => {
     // Redirect if not onboarded
     if (!userState.preferences.homeLocation) {
@@ -78,12 +83,16 @@ export default function Dashboard() {
 
         // Set user location state
         if (currentLocation && locationInfo) {
-          setUserLocation({
+          const newLocation = {
             lat: currentLocation.lat,
             lng: currentLocation.lng,
             city: locationInfo.city,
             state: locationInfo.state
-          });
+          };
+          console.log('Setting user location:', newLocation);
+          setUserLocation(newLocation);
+        } else {
+          console.log('No location data available:', { currentLocation, locationInfo });
         }
 
         // Fetch quests with retry logic and location parameters
@@ -149,33 +158,36 @@ export default function Dashboard() {
         }
         
         if (quests.length === 0) {
-          console.error('Failed to fetch quests after all retries, using fallback data');
-          // Fallback to a few sample quests if API fails
+          console.log('No quests found, creating location-based fallback quests');
+          // Create location-aware fallback quests
+          const cityName = locationInfo?.city || 'Your City';
+          const stateName = locationInfo?.state || 'Your State';
+          
           quests = [
             {
               id: 'fallback-1',
-              title: 'Historic Downtown Walk',
-              description: 'Explore the charming historic district with its cobblestone streets and Victorian architecture.',
+              title: `${cityName} Historic District Walk`,
+              description: `Explore the charming historic district of ${cityName} with its unique architecture and local landmarks.`,
               category: 'Culture',
               duration_min: 45,
               difficulty: 'Easy',
-              lat: 43.6532,
-              lng: -79.3832,
-              city: 'Toronto',
+              lat: currentLocation?.lat || 33.7606,
+              lng: currentLocation?.lng || -84.3933,
+              city: cityName,
               tags: ['history', 'walking', 'architecture'],
               created_at: '2024-01-15T10:00:00Z'
             },
             {
               id: 'fallback-2',
-              title: 'Waterfront Photography Challenge',
-              description: 'Capture the perfect sunset shot along the waterfront with different angles and compositions.',
+              title: `${cityName} Photography Challenge`,
+              description: `Capture the perfect shots around ${cityName} with different angles and compositions.`,
               category: 'Photography',
               duration_min: 60,
               difficulty: 'Medium',
-              lat: 43.6426,
-              lng: -79.3871,
-              city: 'Toronto',
-              tags: ['photography', 'sunset', 'waterfront'],
+              lat: currentLocation?.lat || 33.7606,
+              lng: currentLocation?.lng || -84.3933,
+              city: cityName,
+              tags: ['photography', 'local', 'exploration'],
               created_at: '2024-01-15T10:00:00Z'
             }
           ];
@@ -229,17 +241,25 @@ export default function Dashboard() {
               <h1 className="text-xl font-bold text-sq-text">SydeQuests</h1>
             </div>
             
-            <nav className="flex items-center gap-6">
-              <Link href="/dashboard" className="text-sq-primary font-medium">
-                Dashboard
-              </Link>
-              <Link href="/search" className="text-sq-text-muted hover:text-sq-text transition-colors">
-                Search
-              </Link>
-              <Link href="/progress" className="text-sq-text-muted hover:text-sq-text transition-colors">
-                Progress
-              </Link>
-            </nav>
+            <div className="flex items-center gap-6">
+              <nav className="flex items-center gap-6">
+                <Link href="/dashboard" className="text-sq-primary font-medium">
+                  Dashboard
+                </Link>
+                <Link href="/search" className="text-sq-text-muted hover:text-sq-text transition-colors">
+                  Search
+                </Link>
+                <Link href="/progress" className="text-sq-text-muted hover:text-sq-text transition-colors">
+                  Progress
+                </Link>
+              </nav>
+              {userLocation && (
+                <div className="flex items-center gap-2 text-sm text-sq-primary">
+                  <span className="text-sq-accent">📍</span>
+                  <span>{userLocation.city}, {userLocation.state}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -260,6 +280,17 @@ export default function Dashboard() {
                   </span>
                 )}
               </p>
+              {userLocation ? (
+                <div className="mt-2 flex items-center gap-2 text-sm text-sq-text-muted">
+                  <span className="text-sq-accent">📍</span>
+                  <span>Current Location: {userLocation.city}, {userLocation.state}</span>
+                </div>
+              ) : (
+                <div className="mt-2 flex items-center gap-2 text-sm text-sq-text-muted">
+                  <span className="text-sq-accent">📍</span>
+                  <span>Detecting your location...</span>
+                </div>
+              )}
             </div>
             <button
               onClick={() => window.location.reload()}

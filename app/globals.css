@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --sq-bg: #0F172A;
-  --sq-primary: #14F4C4;
-  --sq-accent: #F72585;
-  --sq-muted: #64748B;
-  --sq-card: #1E293B;
-  --sq-text: #F8FAFC;
-  --sq-text-muted: #64748B;
+  --sq-bg: #252A34;
+  --sq-primary: #08D9D6;
+  --sq-accent: #FF2E63;
+  --sq-muted: #EAEAEA;
+  --sq-card: #252A34;
+  --sq-text: #EAEAEA;
+  --sq-text-muted: #EAEAEA;
 }
 
 @theme inline {
@@ -51,12 +51,12 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--sq-primary);
   border-radius: 4px;
-  box-shadow: 0 0 5px rgba(20, 244, 196, 0.5);
+  box-shadow: 0 0 5px rgba(8, 217, 214, 0.5);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #0FD9B8;
-  box-shadow: 0 0 8px rgba(20, 244, 196, 0.7);
+  background: #00C4CC;
+  box-shadow: 0 0 8px rgba(8, 217, 214, 0.7);
 }
 
 /* Animations */
@@ -77,19 +77,19 @@ body {
 
 @keyframes neonGlow {
   0%, 100% { 
-    box-shadow: 0 0 5px rgba(20, 244, 196, 0.3), 0 0 10px rgba(20, 244, 196, 0.2);
+    box-shadow: 0 0 5px rgba(8, 217, 214, 0.3), 0 0 10px rgba(8, 217, 214, 0.2);
   }
   50% { 
-    box-shadow: 0 0 10px rgba(20, 244, 196, 0.5), 0 0 20px rgba(20, 244, 196, 0.3);
+    box-shadow: 0 0 10px rgba(8, 217, 214, 0.5), 0 0 20px rgba(8, 217, 214, 0.3);
   }
 }
 
 @keyframes neonPulse {
   0%, 100% { 
-    box-shadow: 0 0 5px rgba(247, 37, 133, 0.3);
+    box-shadow: 0 0 5px rgba(255, 46, 99, 0.3);
   }
   50% { 
-    box-shadow: 0 0 15px rgba(247, 37, 133, 0.6), 0 0 25px rgba(247, 37, 133, 0.4);
+    box-shadow: 0 0 15px rgba(255, 46, 99, 0.6), 0 0 25px rgba(255, 46, 99, 0.4);
   }
 }
 
@@ -120,26 +120,26 @@ body {
 
 .quest-card:hover {
   transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 20px 40px rgba(20, 244, 196, 0.25);
+  box-shadow: 0 20px 40px rgba(8, 217, 214, 0.25);
 }
 
 /* Button styles */
 .btn-primary {
-  background: linear-gradient(135deg, var(--sq-primary), #0FD9B8);
-  color: #0F172A;
+  background: linear-gradient(135deg, var(--sq-primary), #00C4CC);
+  color: var(--sq-bg);
   border: none;
   border-radius: 12px;
   padding: 12px 24px;
   font-weight: 600;
   transition: all 0.3s ease;
   cursor: pointer;
-  box-shadow: 0 0 20px rgba(20, 244, 196, 0.3);
+  box-shadow: 0 0 20px rgba(8, 217, 214, 0.3);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(20, 244, 196, 0.5);
-  background: linear-gradient(135deg, #0FD9B8, var(--sq-primary));
+  box-shadow: 0 8px 25px rgba(8, 217, 214, 0.5);
+  background: linear-gradient(135deg, #00C4CC, var(--sq-primary));
 }
 
 .btn-secondary {
@@ -156,21 +156,21 @@ body {
 .btn-secondary:hover {
   border-color: var(--sq-primary);
   color: var(--sq-primary);
-  box-shadow: 0 0 15px rgba(20, 244, 196, 0.2);
+  box-shadow: 0 0 15px rgba(8, 217, 214, 0.2);
 }
 
 /* Card styles */
 .card {
   background: var(--sq-card);
   border-radius: 16px;
-  border: 1px solid rgba(100, 116, 139, 0.2);
+  border: 1px solid rgba(234, 234, 234, 0.2);
   padding: 24px;
   transition: all 0.3s ease;
 }
 
 .card:hover {
   border-color: var(--sq-primary);
-  box-shadow: 0 8px 32px rgba(20, 244, 196, 0.2);
+  box-shadow: 0 8px 32px rgba(8, 217, 214, 0.2);
 }
 
 /* Badge styles */
@@ -186,21 +186,21 @@ body {
 }
 
 .badge-primary {
-  background: rgba(20, 244, 196, 0.2);
+  background: rgba(8, 217, 214, 0.2);
   color: var(--sq-primary);
   border: 1px solid var(--sq-primary);
-  box-shadow: 0 0 10px rgba(20, 244, 196, 0.3);
+  box-shadow: 0 0 10px rgba(8, 217, 214, 0.3);
 }
 
 .badge-accent {
-  background: rgba(247, 37, 133, 0.2);
+  background: rgba(255, 46, 99, 0.2);
   color: var(--sq-accent);
   border: 1px solid var(--sq-accent);
-  box-shadow: 0 0 10px rgba(247, 37, 133, 0.3);
+  box-shadow: 0 0 10px rgba(255, 46, 99, 0.3);
 }
 
 .badge-muted {
-  background: rgba(100, 116, 139, 0.2);
+  background: rgba(234, 234, 234, 0.2);
   color: var(--sq-muted);
   border: 1px solid var(--sq-muted);
 }

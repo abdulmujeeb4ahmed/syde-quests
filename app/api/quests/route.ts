@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       console.log(`API: User location ${userLat}, ${userLng}`);
       
       // Check if user is in Atlanta area (rough coordinates)
-      if (userLat >= 33.6 && userLat <= 33.9 && userLng >= -84.5 && userLng <= -84.2) {
+      if (userLat >= 33.6 && userLat <= 34.0 && userLng >= -84.5 && userLng <= -84.1) {
         console.log('API: Using Atlanta quests');
         baseQuests = atlantaQuests;
       } else {
