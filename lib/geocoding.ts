@@ -16,6 +16,19 @@ export function reverseGeocode(lat: number, lng: number): Promise<LocationInfo> 
     // For MVP, we'll use a simple coordinate-based approximation
     // In production, you'd use a real geocoding service like Google Maps API
     
+    // Atlanta, Georgia area approximation
+    if (lat >= 33.6 && lat <= 33.9 && lng >= -84.5 && lng <= -84.2) {
+      resolve({
+        lat,
+        lng,
+        city: 'Atlanta',
+        state: 'Georgia',
+        country: 'United States',
+        address: 'Atlanta, GA, USA'
+      });
+      return;
+    }
+    
     // Toronto area approximation
     if (lat >= 43.5 && lat <= 43.8 && lng >= -79.6 && lng <= -79.1) {
       resolve({
@@ -68,6 +81,45 @@ export function reverseGeocode(lat: number, lng: number): Promise<LocationInfo> 
       return;
     }
     
+    // Los Angeles area approximation
+    if (lat >= 33.9 && lat <= 34.2 && lng >= -118.5 && lng <= -118.1) {
+      resolve({
+        lat,
+        lng,
+        city: 'Los Angeles',
+        state: 'California',
+        country: 'United States',
+        address: 'Los Angeles, CA, USA'
+      });
+      return;
+    }
+    
+    // Chicago area approximation
+    if (lat >= 41.7 && lat <= 42.0 && lng >= -87.8 && lng <= -87.4) {
+      resolve({
+        lat,
+        lng,
+        city: 'Chicago',
+        state: 'Illinois',
+        country: 'United States',
+        address: 'Chicago, IL, USA'
+      });
+      return;
+    }
+    
+    // Miami area approximation
+    if (lat >= 25.6 && lat <= 25.9 && lng >= -80.3 && lng <= -80.1) {
+      resolve({
+        lat,
+        lng,
+        city: 'Miami',
+        state: 'Florida',
+        country: 'United States',
+        address: 'Miami, FL, USA'
+      });
+      return;
+    }
+    
     // San Francisco area approximation
     if (lat >= 37.7 && lat <= 37.9 && lng >= -122.6 && lng <= -122.3) {
       resolve({
@@ -81,15 +133,64 @@ export function reverseGeocode(lat: number, lng: number): Promise<LocationInfo> 
       return;
     }
     
-    // Default fallback
-    resolve({
-      lat,
-      lng,
-      city: 'Unknown City',
-      state: 'Unknown State',
-      country: 'Unknown Country',
-      address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`
-    });
+    // Seattle area approximation
+    if (lat >= 47.4 && lat <= 47.8 && lng >= -122.5 && lng <= -122.1) {
+      resolve({
+        lat,
+        lng,
+        city: 'Seattle',
+        state: 'Washington',
+        country: 'United States',
+        address: 'Seattle, WA, USA'
+      });
+      return;
+    }
+    
+    // Boston area approximation
+    if (lat >= 42.2 && lat <= 42.5 && lng >= -71.2 && lng <= -70.9) {
+      resolve({
+        lat,
+        lng,
+        city: 'Boston',
+        state: 'Massachusetts',
+        country: 'United States',
+        address: 'Boston, MA, USA'
+      });
+      return;
+    }
+    
+    // Default fallback - try to determine if it's US or Canada based on latitude
+    const isUS = lat >= 24.0 && lat <= 49.0 && lng >= -125.0 && lng <= -66.0;
+    const isCanada = lat >= 41.0 && lat <= 84.0 && lng >= -141.0 && lng <= -52.0;
+    
+    if (isUS) {
+      resolve({
+        lat,
+        lng,
+        city: 'Your City',
+        state: 'Your State',
+        country: 'United States',
+        address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+      });
+    } else if (isCanada) {
+      resolve({
+        lat,
+        lng,
+        city: 'Your City',
+        state: 'Your Province',
+        country: 'Canada',
+        address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+      });
+    } else {
+      resolve({
+        lat,
+        lng,
+        city: 'Your City',
+        state: 'Your State',
+        country: 'Your Country',
+        address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+      });
+    }
   });
 }
 

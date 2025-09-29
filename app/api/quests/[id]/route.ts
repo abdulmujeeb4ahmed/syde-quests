@@ -3,10 +3,11 @@ import questData from '../../../../data/quests.seed.json';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const quest = questData.find(q => q.id === params.id);
+    const { id } = await params;
+    const quest = questData.find(q => q.id === id);
     
     if (!quest) {
       return NextResponse.json(
