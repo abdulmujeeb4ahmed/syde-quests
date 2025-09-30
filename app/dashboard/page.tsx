@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { loadState } from '@/lib/storage';
+import { loadState, saveState } from '@/lib/storage';
 import { getCurrentLocation } from '@/lib/geo';
 import { generateRecommendations } from '@/lib/recommend';
 import { getRotatedQuestOfTheDay } from '@/lib/qod';
@@ -55,27 +55,50 @@ export default function Dashboard() {
         let currentLocation = null;
         let locationInfo = null;
         
-        console.log('User state preferences:', userState.preferences.homeLocation);
-        
-        if (userState.preferences.homeLocation) {
-          console.log('Using stored home location');
-          currentLocation = {
-            lat: userState.preferences.homeLocation.lat,
-            lng: userState.preferences.homeLocation.lng
+        // Always get fresh current location (don't use cached data)
+        console.log('Getting fresh current location...');
+        try {
+          currentLocation = await getCurrentLocation();
+          console.log('Got current location:', currentLocation);
+          locationInfo = await reverseGeocode(currentLocation.lat, currentLocation.lng);
+          console.log('Got location info:', locationInfo);
+          
+          // Save the fresh location to user state
+          const updatedState = {
+            ...userState,
+            preferences: {
+              ...userState.preferences,
+              homeLocation: {
+                lat: currentLocation.lat,
+                lng: currentLocation.lng,
+                city: locationInfo.city,
+                state: locationInfo.state,
+                address: locationInfo.address,
+                country: locationInfo.country
+              }
+            }
           };
-          locationInfo = {
-            city: userState.preferences.homeLocation.city,
-            state: userState.preferences.homeLocation.state
-          };
-        } else {
-          console.log('Getting current location...');
-          try {
-            currentLocation = await getCurrentLocation();
-            console.log('Got current location:', currentLocation);
-            locationInfo = await reverseGeocode(currentLocation.lat, currentLocation.lng);
-            console.log('Got location info:', locationInfo);
-          } catch (error) {
-            console.error('Failed to get current location:', error);
+          saveState(updatedState);
+          setUserState(updatedState);
+          console.log('Saved fresh location to user state');
+        } catch (error) {
+          console.error('Failed to get current location:', error);
+          // Fallback to saved location if available
+          if (userState.preferences.homeLocation) {
+            console.log('Using fallback saved location');
+            currentLocation = {
+              lat: userState.preferences.homeLocation.lat,
+              lng: userState.preferences.homeLocation.lng
+            };
+            locationInfo = {
+              city: userState.preferences.homeLocation.city,
+              state: userState.preferences.homeLocation.state
+            };
+          } else {
+            // Use default location as last resort
+            console.log('Using default location');
+            currentLocation = { lat: 33.7606, lng: -84.3933 }; // Atlanta default
+            locationInfo = { city: 'Atlanta', state: 'Georgia' };
           }
         }
         
@@ -117,7 +140,7 @@ export default function Dashboard() {
                   lng: place.lng,
                   city: place.city,
                   tags: [place.category.toLowerCase(), 'local', 'discovery'],
-                  cover_url: `https://images.unsplash.com/photo-${1500000000000 + index}?w=400`,
+                  cover_url: undefined, // No cover image for dynamic places
                   created_at: new Date().toISOString()
                 }));
                 quests = dynamicQuests;
@@ -283,7 +306,38 @@ export default function Dashboard() {
               )}
             </div>
             <button
-              onClick={() => window.location.reload()}
+              onClick={async () => {
+                try {
+                  // Clear saved location and get fresh one
+                  const newLocation = await getCurrentLocation();
+                  const newLocationInfo = await reverseGeocode(newLocation.lat, newLocation.lng);
+                  
+                  // Update user state with new location
+                  const updatedState = {
+                    ...userState,
+                    preferences: {
+                      ...userState.preferences,
+                      homeLocation: {
+                        lat: newLocation.lat,
+                        lng: newLocation.lng,
+                        city: newLocationInfo.city,
+                        state: newLocationInfo.state,
+                        address: newLocationInfo.address,
+                        country: newLocationInfo.country
+                      }
+                    }
+                  };
+                  
+                  saveState(updatedState);
+                  setUserState(updatedState);
+                  
+                  // Reload the page to refresh everything
+                  window.location.reload();
+                } catch (error) {
+                  console.error('Failed to refresh location:', error);
+                  alert('Failed to get your location. Please check your browser permissions.');
+                }
+              }}
               className="btn-secondary text-sm"
             >
               🔄 Refresh Location

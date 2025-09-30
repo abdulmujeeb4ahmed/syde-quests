@@ -38,27 +38,30 @@ export default function Search() {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       try {
-        // Get user location
-        let location = userState.preferences.homeLocation;
-        if (location) {
-          setUserLocation({ 
-            lat: location.lat, 
-            lng: location.lng,
-            city: location.city,
-            state: location.state
+        // Always get fresh current location (don't use cached data)
+        try {
+          console.log('Getting fresh current location for search...');
+          const currentLocation = await getCurrentLocation();
+          const locationInfo = await reverseGeocode(currentLocation.lat, currentLocation.lng);
+          setUserLocation({
+            lat: currentLocation.lat,
+            lng: currentLocation.lng,
+            city: locationInfo.city,
+            state: locationInfo.state
           });
-        } else {
-          try {
-            const currentLocation = await getCurrentLocation();
-            const locationInfo = await reverseGeocode(currentLocation.lat, currentLocation.lng);
-            setUserLocation({
-              lat: currentLocation.lat,
-              lng: currentLocation.lng,
-              city: locationInfo.city,
-              state: locationInfo.state
+          console.log('Got fresh location for search:', currentLocation, locationInfo);
+        } catch (error) {
+          console.error('Failed to get current location:', error);
+          // Fallback to saved location if available
+          let location = userState.preferences.homeLocation;
+          if (location) {
+            setUserLocation({ 
+              lat: location.lat, 
+              lng: location.lng,
+              city: location.city,
+              state: location.state
             });
-          } catch (error) {
-            console.error('Failed to get current location:', error);
+            console.log('Using fallback saved location for search');
           }
         }
 
@@ -84,7 +87,7 @@ export default function Search() {
                   lng: place.lng,
                   city: place.city,
                   tags: [place.category.toLowerCase(), 'local', 'discovery'],
-                  cover_url: `https://images.unsplash.com/photo-${1500000000000 + index}?w=400`,
+                  cover_url: undefined, // No cover image for dynamic places
                   created_at: new Date().toISOString()
                 }));
                 quests = dynamicQuests;
