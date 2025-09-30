@@ -8750,7 +8750,10 @@ I've updated both the search page and dashboard to prioritize dynamic activities
 
 **Dashboard:**
 - **Multiple activities** instead of just one
-- **"Activities Near 
+- **"Activities Near You"** section with 3-6 local activities
+- **Real local places** found near your current location
+
+Both pages should now show real, local activities instead of hardcoded Toronto content! 🌍✨
 
 ---
 
