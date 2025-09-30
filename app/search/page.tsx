@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { loadState } from '@/lib/storage';
+import { loadState, cacheQuests, getCachedQuests } from '@/lib/storage';
 import { getCurrentLocation } from '@/lib/geo';
 import { generateRecommendations } from '@/lib/recommend';
 import { reverseGeocode } from '@/lib/geocoding';
 import QuestList from '@/components/QuestList';
 import FiltersBar, { QuestFilters } from '@/components/FiltersBar';
+import Toast from '@/components/Toast';
 import Link from 'next/link';
 
 interface Quest {
@@ -30,6 +31,7 @@ export default function Search() {
   const [allQuests, setAllQuests] = useState<Quest[]>([]);
   const [filteredQuests, setFilteredQuests] = useState<Quest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -70,46 +72,58 @@ export default function Search() {
           }
         }
 
-        // Fetch dynamic activities from places API first
+        // Check for cached quests first
+        const cachedQuests = getCachedQuests();
         let quests: Quest[] = [];
         
         if (currentLocation) {
           try {
-            console.log('Fetching dynamic activities from places API...', {
+            console.log('Fetching dynamic quests from places API...', {
               lat: currentLocation.lat,
               lng: currentLocation.lng,
               city: locationInfo?.city,
               state: locationInfo?.state
             });
-            const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=6&limit=20`, {
+            
+            const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=6&limit=10`, {
               signal: AbortSignal.timeout(5000) // 5 second timeout
             });
+            
             console.log('Places API response status:', placesResponse.status);
+            
             if (placesResponse.ok) {
               const placesData = await placesResponse.json();
               console.log('Places API data:', placesData);
-              if (placesData.places && placesData.places.length > 0) {
-                // Convert places to quests
-                const dynamicQuests = placesData.places.map((place: any, index: number) => ({
-                  id: `dynamic-${place.id}`,
-                  title: `${place.name} Discovery`,
-                  description: place.description,
-                  category: place.category,
-                  duration_min: Math.floor(Math.random() * 120) + 30, // 30-150 minutes
-                  difficulty: ['Easy', 'Medium', 'Hard'][Math.floor(Math.random() * 3)],
-                  lat: place.lat,
-                  lng: place.lng,
-                  city: place.city,
-                  tags: [place.category.toLowerCase(), 'local', 'discovery'],
-                  cover_url: undefined, // No cover image for dynamic places
-                  created_at: new Date().toISOString()
-                }));
-                quests = dynamicQuests;
-                console.log(`Found ${dynamicQuests.length} dynamic activities for your location`);
+              
+              // Handle the new quest format
+              if (placesData.quests && placesData.quests.length > 0) {
+                quests = placesData.quests;
+                console.log(`Found ${quests.length} dynamic quests from ${placesData.source}`);
+                
+                // Cache the quests for offline use
+                cacheQuests(quests, { lat: currentLocation.lat, lng: currentLocation.lng }, placesData.source);
+                
+                // Show toast if there was an error but fallback data was used
+                if (placesData.error) {
+                  setToast({ message: placesData.error, type: 'info' });
+                }
+              } else {
+                throw new Error('No quests returned from API');
               }
+            } else {
+              throw new Error(`HTTP error! status: ${placesResponse.status}`);
             }
           } catch (error) {
-            console.error('Failed to fetch dynamic places:', error);
+            console.error('Failed to fetch dynamic quests:', error);
+            
+            // Try to use cached quests if available
+            if (cachedQuests) {
+              console.log('Using cached quests as fallback');
+              quests = cachedQuests.quests;
+              setToast({ message: 'Using cached quests (offline mode)', type: 'info' });
+            } else {
+              setToast({ message: 'Couldn\'t load dynamic quests, showing fallback quests instead.', type: 'error' });
+            }
           }
         }
         
@@ -378,6 +392,15 @@ export default function Search() {
           />
         </div>
       </main>
+
+      {/* Toast notifications */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { loadState, saveState } from '@/lib/storage';
+import { loadState, saveState, cacheQuests, getCachedQuests } from '@/lib/storage';
 import { getCurrentLocation } from '@/lib/geo';
 import { generateRecommendations } from '@/lib/recommend';
 import { getRotatedQuestOfTheDay } from '@/lib/qod';
 import { reverseGeocode, getLocationDisplayName } from '@/lib/geocoding';
+import Toast from '@/components/Toast';
 import QuestCard from '@/components/QuestCard';
 import QuestList from '@/components/QuestList';
+import QuestOfTheDayCard from '@/components/QuestOfTheDayCard';
 import Link from 'next/link';
 
 interface Quest {
@@ -33,6 +35,7 @@ export default function Dashboard() {
   const [recommendedQuests, setRecommendedQuests] = useState<Quest[]>([]);
   const [questOfTheDay, setQuestOfTheDay] = useState<Quest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Debug userLocation state changes
   useEffect(() => {
@@ -129,41 +132,51 @@ export default function Dashboard() {
           console.log('No location data available:', { currentLocation, locationInfo });
         }
 
-          // Fetch dynamic activities from places API first
+          // Check for cached quests first
+          const cachedQuests = getCachedQuests();
           let quests: Quest[] = [];
           
           if (currentLocation) {
             try {
-              console.log('Fetching dynamic activities from places API...');
-              const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=6&limit=20`, {
+              console.log('Fetching dynamic quests from places API...');
+              const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=6&limit=10`, {
                 signal: AbortSignal.timeout(5000) // 5 second timeout
               });
+              
               if (placesResponse.ok) {
                 const placesData = await placesResponse.json();
-                if (placesData.places && placesData.places.length > 0) {
-                // Convert places to quests
-                const dynamicQuests = placesData.places.map((place: any, index: number) => ({
-                  id: `dynamic-${place.id}`,
-                  title: `${place.name} Discovery`,
-                  description: place.description,
-                  category: place.category,
-                  duration_min: Math.floor(Math.random() * 120) + 30, // 30-150 minutes
-                  difficulty: ['Easy', 'Medium', 'Hard'][Math.floor(Math.random() * 3)],
-                  lat: place.lat,
-                  lng: place.lng,
-                  city: place.city,
-                  tags: [place.category.toLowerCase(), 'local', 'discovery'],
-                  cover_url: undefined, // No cover image for dynamic places
-                  created_at: new Date().toISOString()
-                }));
-                quests = dynamicQuests;
-                console.log(`Found ${dynamicQuests.length} dynamic activities for your location`);
+                
+                // Handle the new quest format
+                if (placesData.quests && placesData.quests.length > 0) {
+                  quests = placesData.quests;
+                  console.log(`Found ${quests.length} dynamic quests from ${placesData.source}`);
+                  
+                  // Cache the quests for offline use
+                  cacheQuests(quests, { lat: currentLocation.lat, lng: currentLocation.lng }, placesData.source);
+                  
+                  // Show toast if there was an error but fallback data was used
+                  if (placesData.error) {
+                    setToast({ message: placesData.error, type: 'info' });
+                  }
+                } else {
+                  throw new Error('No quests returned from API');
+                }
+              } else {
+                throw new Error(`HTTP error! status: ${placesResponse.status}`);
+              }
+            } catch (error) {
+              console.error('Failed to fetch dynamic quests:', error);
+              
+              // Try to use cached quests if available
+              if (cachedQuests) {
+                console.log('Using cached quests as fallback');
+                quests = cachedQuests.quests;
+                setToast({ message: 'Using cached quests (offline mode)', type: 'info' });
+              } else {
+                setToast({ message: 'Couldn\'t load dynamic quests, showing fallback quests instead.', type: 'error' });
               }
             }
-          } catch (error) {
-            console.error('Failed to fetch dynamic places:', error);
           }
-        }
         
         // If no dynamic places found, try hardcoded quests as fallback
         if (quests.length === 0) {
@@ -230,11 +243,11 @@ export default function Dashboard() {
         setRecommendedQuests(recommendations);
         console.log(`Setting ${recommendations.length} recommended quests`);
 
-        // Get quest of the day
+        // Get quest of the day using the last 7 days tracking
         const qod = getRotatedQuestOfTheDay(
           quests,
           userState.preferences.homeLocation ? 'device-id' : 'default',
-          userState.lastSeenQuestOfDay
+          userState.last7DaysQOD || []
         );
         setQuestOfTheDay(qod);
       } catch (error) {
@@ -396,12 +409,24 @@ export default function Dashboard() {
         {/* Quest of the Day */}
         {questOfTheDay && (
           <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-2xl font-bold text-sq-text">Quest of the Day</h3>
-              <span className="badge badge-accent">Featured</span>
+            <div className="flex items-center gap-2 mb-6">
+              <h3 className="text-3xl font-bold text-sq-text">Quest of the Day</h3>
+              <span className="badge badge-accent text-sm px-3 py-1">Featured</span>
             </div>
-            <div className="max-w-md">
-              <QuestCard quest={questOfTheDay} showDistance={false} />
+            <div className="max-w-2xl">
+              <QuestOfTheDayCard 
+                quest={questOfTheDay} 
+                showDistance={false}
+                onComplete={() => {
+                  // Update the last 7 days QOD tracking
+                  const updatedState = {
+                    ...userState,
+                    last7DaysQOD: [questOfTheDay.id, ...(userState.last7DaysQOD || [])].slice(0, 7)
+                  };
+                  saveState(updatedState);
+                  setUserState(updatedState);
+                }}
+              />
             </div>
           </div>
         )}
@@ -479,6 +504,15 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+
+      {/* Toast notifications */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

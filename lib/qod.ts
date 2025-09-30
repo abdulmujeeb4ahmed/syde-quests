@@ -35,13 +35,13 @@ export function getQuestOfTheDay(quests: Quest[], deviceId: string): Quest | nul
 export function getRotatedQuestOfTheDay(
   quests: Quest[], 
   deviceId: string, 
-  lastSeenQuestId: string | null
+  lastSeenQuestIds: string[] = []
 ): Quest | null {
   if (quests.length === 0) return null;
   
-  // Filter out the last seen quest if it exists
-  const availableQuests = lastSeenQuestId 
-    ? quests.filter(q => q.id !== lastSeenQuestId)
+  // Filter out quests from the last 7 days
+  const availableQuests = lastSeenQuestIds.length > 0
+    ? quests.filter(q => !lastSeenQuestIds.includes(q.id))
     : quests;
   
   if (availableQuests.length === 0) {

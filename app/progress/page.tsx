@@ -10,12 +10,33 @@ interface QuestCompletion {
   notes: string;
 }
 
+interface Quest {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  duration_min: number;
+  difficulty: string;
+  lat: number;
+  lng: number;
+  city: string;
+  tags: string[];
+  cover_url: string;
+  created_at: string;
+}
+
 export default function Progress() {
   const [userState, setUserState] = useState(loadState());
   const [isLoading, setIsLoading] = useState(true);
+  const [quests, setQuests] = useState<Quest[]>([]);
 
   useEffect(() => {
-    setIsLoading(false);
+    // Load quest data for titles
+    fetch('/data/quests.seed.json')
+      .then(res => res.json())
+      .then(data => setQuests(data))
+      .catch(() => setQuests([]))
+      .finally(() => setIsLoading(false));
   }, []);
 
   const getBadgeInfo = (badge: string) => {
@@ -46,6 +67,67 @@ export default function Progress() {
     return 'Adventure';
   };
 
+  const calculateStreak = () => {
+    const completions = Object.values(userState.completions);
+    if (completions.length === 0) return 0;
+
+    const sortedDates = completions
+      .map(c => new Date(c.completedAt))
+      .sort((a, b) => b.getTime() - a.getTime());
+
+    let streak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < sortedDates.length; i++) {
+      const completionDate = new Date(sortedDates[i]);
+      completionDate.setHours(0, 0, 0, 0);
+      
+      const daysDiff = Math.floor((today.getTime() - completionDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (i === 0 && daysDiff <= 1) {
+        streak = 1;
+      } else if (i > 0) {
+        const prevDate = new Date(sortedDates[i - 1]);
+        prevDate.setHours(0, 0, 0, 0);
+        const daysBetween = Math.floor((prevDate.getTime() - completionDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysBetween === 1) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+    }
+
+    return streak;
+  };
+
+  const getQuestsPerWeek = () => {
+    const completions = Object.values(userState.completions);
+    if (completions.length === 0) return [];
+
+    const weeks: Record<string, number> = {};
+    
+    completions.forEach(completion => {
+      const date = new Date(completion.completedAt);
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay());
+      const weekKey = weekStart.toISOString().split('T')[0];
+      
+      weeks[weekKey] = (weeks[weekKey] || 0) + 1;
+    });
+
+    return Object.entries(weeks)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-8); // Last 8 weeks
+  };
+
+  const getQuestTitle = (questId: string) => {
+    const quest = quests.find(q => q.id === questId);
+    return quest?.title || 'Unknown Quest';
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-sq-bg flex items-center justify-center">
@@ -59,6 +141,8 @@ export default function Progress() {
 
   const completedCount = Object.keys(userState.completions).length;
   const nextMilestone = getNextMilestone();
+  const streak = calculateStreak();
+  const questsPerWeek = getQuestsPerWeek();
 
   return (
     <div className="min-h-screen bg-sq-bg">
@@ -104,17 +188,15 @@ export default function Progress() {
           </div>
           
           <div className="card text-center">
-            <div className="text-4xl mb-2">🏅</div>
-            <p className="text-3xl font-bold text-sq-text">{userState.badges.length}</p>
-            <p className="text-sm text-sq-text-muted">Badges Earned</p>
+            <div className="text-4xl mb-2">🔥</div>
+            <p className="text-3xl font-bold text-sq-text">{streak}</p>
+            <p className="text-sm text-sq-text-muted">Day Streak</p>
           </div>
           
           <div className="card text-center">
-            <div className="text-4xl mb-2">📅</div>
-            <p className="text-3xl font-bold text-sq-text">
-              {completedCount > 0 ? Math.round(userState.points / completedCount) : 0}
-            </p>
-            <p className="text-sm text-sq-text-muted">Avg Points/Quest</p>
+            <div className="text-4xl mb-2">🏅</div>
+            <p className="text-3xl font-bold text-sq-text">{userState.badges.length}</p>
+            <p className="text-sm text-sq-text-muted">Badges Earned</p>
           </div>
         </div>
 
@@ -122,35 +204,32 @@ export default function Progress() {
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-sq-text mb-6">Your Badges</h2>
           
-          {userState.badges.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {userState.badges.map((badge, index) => {
-                const badgeInfo = getBadgeInfo(badge);
-                return (
-                  <div key={index} className="card">
-                    <div className="flex items-center gap-4">
-                      <div className="text-4xl">{badgeInfo.emoji}</div>
-                      <div>
-                        <h3 className="font-semibold text-sq-text">{badgeInfo.name}</h3>
-                        <p className="text-sm text-sq-text-muted">{badgeInfo.description}</p>
-                      </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {['explorer', 'adventurer', 'legend'].map((badge) => {
+              const badgeInfo = getBadgeInfo(badge);
+              const isEarned = userState.badges.includes(badge);
+              return (
+                <div key={badge} className={`card ${!isEarned ? 'opacity-50' : ''}`}>
+                  <div className="flex items-center gap-4">
+                    <div className="text-4xl">{isEarned ? badgeInfo.emoji : '🔒'}</div>
+                    <div>
+                      <h3 className={`font-semibold ${isEarned ? 'text-sq-text' : 'text-sq-text-muted'}`}>
+                        {badgeInfo.name}
+                      </h3>
+                      <p className="text-sm text-sq-text-muted">{badgeInfo.description}</p>
+                      {!isEarned && (
+                        <p className="text-xs text-sq-text-muted mt-1">
+                          {badge === 'explorer' && `Complete ${5 - completedCount} more quests`}
+                          {badge === 'adventurer' && `Complete ${10 - completedCount} more quests`}
+                          {badge === 'legend' && `Complete ${25 - completedCount} more quests`}
+                        </p>
+                      )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="text-6xl mb-4">🏅</div>
-              <h3 className="text-xl font-semibold text-sq-text mb-2">No badges yet</h3>
-              <p className="text-sq-text-muted mb-4">
-                Complete your first quest to earn your first badge!
-              </p>
-              <Link href="/search" className="btn-primary">
-                Find Quests
-              </Link>
-            </div>
-          )}
+                </div>
+              );
+            })}
+          </div>
 
           {/* Next Milestone */}
           {nextMilestone && (
@@ -168,6 +247,42 @@ export default function Progress() {
           )}
         </div>
 
+        {/* Chart Section */}
+        {questsPerWeek.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-sq-text mb-6">Quest Activity</h2>
+            <div className="card">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-sq-text mb-2">Quests Completed Per Week</h3>
+                <p className="text-sm text-sq-text-muted">Your quest completion activity over the last 8 weeks</p>
+              </div>
+              
+              <div className="space-y-3">
+                {questsPerWeek.map(([week, count]) => {
+                  const maxCount = Math.max(...questsPerWeek.map(([, c]) => c));
+                  const percentage = (count / maxCount) * 100;
+                  
+                  return (
+                    <div key={week} className="flex items-center gap-4">
+                      <div className="text-sm text-sq-text-muted w-20">
+                        {new Date(week).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </div>
+                      <div className="flex-1 bg-sq-muted/20 rounded-full h-6 relative">
+                        <div 
+                          className="bg-sq-primary rounded-full h-6 flex items-center justify-end pr-2"
+                          style={{ width: `${percentage}%` }}
+                        >
+                          <span className="text-xs font-medium text-white">{count}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Quest History */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-sq-text mb-6">Quest History</h2>
@@ -181,10 +296,17 @@ export default function Progress() {
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-4">
                         <div className="text-3xl">✅</div>
-                        <div>
-                          <h3 className="font-semibold text-sq-text mb-1">Quest Completed</h3>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-sq-text mb-1">
+                            {getQuestTitle(questId)}
+                          </h3>
                           <p className="text-sm text-sq-text-muted mb-2">
-                            Completed on {new Date(completion.completedAt).toLocaleDateString()}
+                            Completed on {new Date(completion.completedAt).toLocaleDateString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
                           </p>
                           
                           {/* Rating */}
@@ -206,9 +328,11 @@ export default function Progress() {
                           
                           {/* Notes */}
                           {completion.notes && (
-                            <p className="text-sm text-sq-text-muted italic">
-                              "{completion.notes}"
-                            </p>
+                            <div className="mt-2 p-3 bg-sq-muted/10 rounded-lg">
+                              <p className="text-sm text-sq-text-muted italic">
+                                "{completion.notes}"
+                              </p>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -216,6 +340,12 @@ export default function Progress() {
                       <div className="text-right">
                         <p className="text-sm font-medium text-sq-primary">
                           +{50 + (completion.rating * 10)} pts
+                        </p>
+                        <p className="text-xs text-sq-text-muted">
+                          {new Date(completion.completedAt).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
                         </p>
                       </div>
                     </div>

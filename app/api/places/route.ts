@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { searchPlaces, getPlacesByCategory, getPopularPlaces } from '../../../lib/places-api';
+import { searchGooglePlaces, mapPlaceToQuest, isInAtlanta, QuestObject } from '../../../lib/google-places-api';
+import atlantaQuests from '../../../data/quests.atlanta.json';
 
 // Simple in-memory cache to prevent excessive API calls
 const cache = new Map();
@@ -38,31 +40,39 @@ export async function GET(request: Request) {
     const searchRadius = radius ? parseFloat(radius) : 5;
     const searchLimit = limit ? parseInt(limit) : 20;
 
-    let places = [];
+    let quests: QuestObject[] = [];
 
     try {
-      if (type === 'category' && category) {
-        // Get places by specific category
-        places = await getPlacesByCategory(userLat, userLng, category, searchRadius);
-      } else if (type === 'popular') {
-        // Get popular places (mix of categories)
-        places = await getPopularPlaces(userLat, userLng);
+      // Check if user is in Atlanta area - use seeded quests
+      if (isInAtlanta(userLat, userLng)) {
+        console.log('User is in Atlanta area, using seeded quests');
+        quests = atlantaQuests as QuestObject[];
       } else {
-        // Default: search for tourist attractions
-        places = await searchPlaces({
-          lat: userLat,
-          lng: userLng,
-          radius: searchRadius,
-          category: category || 'tourist_attraction',
-          limit: searchLimit
-        });
+        // Use Google Places API for dynamic quests
+        console.log('User is outside Atlanta, fetching dynamic quests from Google Places');
+        
+        // Map category to Google Places type
+        const googleType = mapCategoryToGoogleType(category || 'tourist_attraction');
+        
+        // Search Google Places
+        const googlePlaces = await searchGooglePlaces(
+          userLat, 
+          userLng, 
+          searchRadius * 1000, // Convert miles to meters
+          googleType,
+          10 // Limit to top 10 results
+        );
+
+        // Map Google Places to quest objects
+        quests = googlePlaces.map((place, index) => mapPlaceToQuest(place, index));
       }
 
       const responseData = {
-        places,
-        total: places.length,
+        quests,
+        total: quests.length,
         location: { lat: userLat, lng: userLng },
-        radius: searchRadius
+        radius: searchRadius,
+        source: isInAtlanta(userLat, userLng) ? 'atlanta_seeded' : 'google_places'
       };
 
       // Cache the response
@@ -76,42 +86,45 @@ export async function GET(request: Request) {
     } catch (apiError) {
       console.error('Places API error:', apiError);
       
-      // Fallback to hardcoded data if API fails
-      const fallbackPlaces = [
+      // Fallback to hardcoded quest data if API fails
+      const fallbackQuests: QuestObject[] = [
         {
           id: 'fallback-1',
-          name: 'Centennial Olympic Park',
-          category: 'Culture',
+          title: 'Centennial Olympic Park Walk',
           description: 'Explore the heart of Atlanta\'s Olympic legacy with its beautiful fountains, sculptures, and green spaces.',
+          category: 'Culture',
           lat: 33.7606,
           lng: -84.3933,
-          address: '265 Park Ave W NW, Atlanta, GA 30313, USA',
+          duration_min: 60,
+          difficulty: 'Easy',
           city: 'Atlanta',
-          state: 'Georgia',
-          country: 'USA',
-          rating: 5
+          tags: ['olympics', 'park', 'history', 'walking'],
+          cover_url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400',
+          created_at: new Date().toISOString()
         },
         {
           id: 'fallback-2',
-          name: 'Piedmont Park',
+          title: 'Piedmont Park Photography',
+          description: 'Capture the beauty of Atlanta\'s largest park with its skyline views, lake reflections, and diverse landscapes.',
           category: 'Nature',
-          description: 'Enjoy Atlanta\'s largest park with skyline views, lake reflections, and diverse landscapes.',
           lat: 33.7859,
           lng: -84.3734,
-          address: 'Piedmont Park, Atlanta, GA, USA',
+          duration_min: 90,
+          difficulty: 'Easy',
           city: 'Atlanta',
-          state: 'Georgia',
-          country: 'USA',
-          rating: 5
+          tags: ['photography', 'park', 'nature', 'skyline'],
+          cover_url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400',
+          created_at: new Date().toISOString()
         }
       ];
 
       const fallbackData = {
-        places: fallbackPlaces,
-        total: fallbackPlaces.length,
+        quests: fallbackQuests,
+        total: fallbackQuests.length,
         location: { lat: userLat, lng: userLng },
         radius: searchRadius,
-        fallback: true
+        source: 'fallback',
+        error: 'Couldn\'t load dynamic quests, showing fallback quests instead.'
       };
 
       // Cache the fallback response too
@@ -130,4 +143,26 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Map quest categories to Google Places API types
+ */
+function mapCategoryToGoogleType(category: string): string {
+  const categoryMap: { [key: string]: string } = {
+    'Culture': 'museum',
+    'Art': 'art_gallery',
+    'Nature': 'park',
+    'Food': 'restaurant',
+    'Shopping': 'shopping_mall',
+    'History': 'historical_site',
+    'Adventure': 'amusement_park',
+    'Photography': 'tourist_attraction',
+    'Fitness': 'gym',
+    'Wellness': 'spa',
+    'Music': 'establishment',
+    'Architecture': 'tourist_attraction'
+  };
+
+  return categoryMap[category] || 'tourist_attraction';
 }

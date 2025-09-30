@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getCurrentLocation } from '@/lib/geo';
+import Toast from '@/components/Toast';
 
 interface Place {
   id: string;
@@ -22,6 +23,7 @@ export default function TestPlaces() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const getCurrentLocationAndPlaces = async () => {
     setLoading(true);
@@ -163,6 +165,15 @@ export default function TestPlaces() {
           </div>
         )}
       </div>
+
+      {/* Toast notifications */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }
