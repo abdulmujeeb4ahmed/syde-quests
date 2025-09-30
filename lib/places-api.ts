@@ -23,7 +23,7 @@ export interface Place {
 export interface PlacesSearchParams {
   lat: number;
   lng: number;
-  radius?: number; // in km, default 5
+  radius?: number; // in miles, default 5
   category?: string; // e.g., 'restaurant', 'tourist_attraction', 'park'
   limit?: number; // default 20
 }
@@ -59,7 +59,7 @@ function transformPlacesData(data: any[]): Place[] {
  * Search for places near a location using OpenStreetMap
  */
 export async function searchPlaces(params: PlacesSearchParams): Promise<Place[]> {
-  const { lat, lng, radius = 5, category = 'tourist_attraction', limit = 20 } = params;
+  const { lat, lng, radius = 5, category = 'tourist_attraction', limit = 20 } = params; // radius in miles
   
   try {
     // Build search query - use more general terms

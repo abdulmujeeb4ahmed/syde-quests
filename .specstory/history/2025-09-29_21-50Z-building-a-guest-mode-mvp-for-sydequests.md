@@ -8757,3 +8757,15 @@ Both pages should now show real, local activities instead of hardcoded Toronto c
 
 ---
 
+_**User (2025-09-30 00:15Z)**_
+
+I want the distance to be in miles
+
+---
+
+_**Assistant (default)**_
+
+I'll u
+
+---
+

@@ -39,10 +39,10 @@ const DURATION_OPTIONS = [
 ];
 
 const DISTANCE_OPTIONS = [
-  { label: '1 km', value: 1 },
-  { label: '5 km', value: 5 },
-  { label: '10 km', value: 10 },
-  { label: '25 km', value: 25 },
+  { label: '1 mi', value: 1 },
+  { label: '3 mi', value: 3 },
+  { label: '6 mi', value: 6 },
+  { label: '15 mi', value: 15 },
 ];
 
 export default function FiltersBar({ onFiltersChange, userLocation }: FiltersBarProps) {
@@ -50,7 +50,7 @@ export default function FiltersBar({ onFiltersChange, userLocation }: FiltersBar
     category: 'All',
     difficulty: 'All',
     maxDuration: 0,
-    maxDistance: 10,
+    maxDistance: 6,
   });
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -66,7 +66,7 @@ export default function FiltersBar({ onFiltersChange, userLocation }: FiltersBar
       category: 'All',
       difficulty: 'All',
       maxDuration: 0,
-      maxDistance: 10,
+      maxDistance: 6,
     };
     setFilters(defaultFilters);
     onFiltersChange(defaultFilters);

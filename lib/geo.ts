@@ -14,10 +14,10 @@ export interface QuestLocation extends Location {
  * Calculate distance between two points using Haversine formula
  * @param point1 First location
  * @param point2 Second location
- * @returns Distance in kilometers
+ * @returns Distance in miles
  */
 export function calculateDistance(point1: Location, point2: Location): number {
-  const R = 6371; // Earth's radius in kilometers
+  const R = 3959; // Earth's radius in miles
   const dLat = toRadians(point2.lat - point1.lat);
   const dLng = toRadians(point2.lng - point1.lng);
   
@@ -69,34 +69,34 @@ export function getCurrentLocation(): Promise<Location> {
 export function findNearbyQuests(
   userLocation: Location,
   quests: QuestLocation[],
-  maxDistanceKm: number
+  maxDistanceMiles: number
 ): QuestLocation[] {
   return quests
     .map(quest => ({
       ...quest,
       distance: calculateDistance(userLocation, quest),
     }))
-    .filter(quest => quest.distance <= maxDistanceKm)
+    .filter(quest => quest.distance <= maxDistanceMiles)
     .sort((a, b) => a.distance - b.distance);
 }
 
 /**
  * Format distance for display
  */
-export function formatDistance(km: number): string {
-  if (km < 1) {
-    return `${Math.round(km * 1000)}m`;
+export function formatDistance(miles: number): string {
+  if (miles < 0.1) {
+    return `${Math.round(miles * 5280)}ft`;
   }
-  return `${km.toFixed(1)}km`;
+  return `${miles.toFixed(1)}mi`;
 }
 
 /**
  * Get distance-based emoji for quest cards
  */
-export function getDistanceEmoji(km: number): string {
-  if (km < 0.5) return '🦶';
-  if (km < 2) return '🚶';
-  if (km < 5) return '🚴';
-  if (km < 15) return '🚗';
+export function getDistanceEmoji(miles: number): string {
+  if (miles < 0.3) return '🦶';
+  if (miles < 1.2) return '🚶';
+  if (miles < 3) return '🚴';
+  if (miles < 9) return '🚗';
   return '✈️';
 }

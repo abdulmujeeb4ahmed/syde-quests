@@ -101,7 +101,7 @@ export default function Dashboard() {
         if (currentLocation) {
           try {
             console.log('Fetching dynamic activities from places API...');
-            const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=10&limit=20`);
+            const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=6&limit=20`);
             if (placesResponse.ok) {
               const placesData = await placesResponse.json();
               if (placesData.places && placesData.places.length > 0) {
