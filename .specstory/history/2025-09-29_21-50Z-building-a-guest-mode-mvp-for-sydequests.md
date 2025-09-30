@@ -10513,3 +10513,83 @@ Now when the APIs fail, you'll get location-appropriate fallback quests instead 
 
 ---
 
+_**User (2025-09-30 00:15Z)**_
+
+WHy is there a teal box around the loading screens?
+
+---
+
+_**Assistant (default)**_
+
+The teal box around the loading screen is likely coming from the CSS styling. Let me check the loading component and fix the styling issue.
+
+
+---
+
+Tool use: **todo_write**
+
+## Todo List
+
+- [-] Remove teal box around loading screens
+- [ ] Check loading component styling
+
+---
+
+Let me find the loading component and check its styling:
+
+
+---
+
+Tool use: **grep**
+
+---
+
+Tool use: **read_file**
+
+Read file: /Users/abdulmujeebahmed/Downloads/Overclock Accelerator/Week 2 Work/syde-quests/app/search/page.tsx
+
+---
+
+I can see the loading screen is using `animate-neon-glow` class. Let me check what this class does in the CSS:
+
+
+---
+
+Tool use: **grep**
+
+---
+
+Tool use: **read_file**
+
+Read file: /Users/abdulmujeebahmed/Downloads/Overclock Accelerator/Week 2 Work/syde-quests/app/globals.css
+
+---
+
+Let me check what the `neonGlow` animation does:
+
+
+---
+
+Tool use: **grep**
+
+---
+
+Tool use: **read_file**
+
+Read file: /Users/abdulmujeebahmed/Downloads/Overclock Accelerator/Week 2 Work/syde-quests/app/globals.css
+
+---
+
+Found the issue! The `animate-neon-glow` class is applying a teal box-shadow around the loading icon. Let me remove this animation from the loading screen:
+
+
+---
+
+
+
+---
+
+
+
+---
+

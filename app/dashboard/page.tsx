@@ -236,7 +236,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-sq-bg flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4 animate-neon-glow">🎯</div>
+          <div className="text-6xl mb-4">🎯</div>
           <p className="text-sq-text-muted">Loading your dashboard...</p>
         </div>
       </div>
