@@ -39,10 +39,13 @@ export default function Search() {
       
       try {
         // Always get fresh current location (don't use cached data)
+        let currentLocation = null;
+        let locationInfo = null;
+        
         try {
           console.log('Getting fresh current location for search...');
-          const currentLocation = await getCurrentLocation();
-          const locationInfo = await reverseGeocode(currentLocation.lat, currentLocation.lng);
+          currentLocation = await getCurrentLocation();
+          locationInfo = await reverseGeocode(currentLocation.lat, currentLocation.lng);
           setUserLocation({
             lat: currentLocation.lat,
             lng: currentLocation.lng,
@@ -55,6 +58,8 @@ export default function Search() {
           // Fallback to saved location if available
           let location = userState.preferences.homeLocation;
           if (location) {
+            currentLocation = { lat: location.lat, lng: location.lng };
+            locationInfo = { city: location.city, state: location.state };
             setUserLocation({ 
               lat: location.lat, 
               lng: location.lng,
@@ -68,10 +73,10 @@ export default function Search() {
         // Fetch dynamic activities from places API first
         let quests: Quest[] = [];
         
-        if (userLocation) {
+        if (currentLocation) {
           try {
             console.log('Fetching dynamic activities from places API...');
-            const placesResponse = await fetch(`/api/places?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=6&limit=20`);
+            const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=6&limit=20`);
             if (placesResponse.ok) {
               const placesData = await placesResponse.json();
               if (placesData.places && placesData.places.length > 0) {
@@ -104,9 +109,9 @@ export default function Search() {
           try {
             console.log('No dynamic activities found, trying hardcoded quests as fallback...');
             const apiUrl = new URL('/api/quests', window.location.origin);
-            if (userLocation) {
-              apiUrl.searchParams.set('lat', userLocation.lat.toString());
-              apiUrl.searchParams.set('lng', userLocation.lng.toString());
+            if (currentLocation) {
+              apiUrl.searchParams.set('lat', currentLocation.lat.toString());
+              apiUrl.searchParams.set('lng', currentLocation.lng.toString());
               apiUrl.searchParams.set('maxDistance', '50');
             }
             
@@ -168,6 +173,23 @@ export default function Search() {
 
   const handleFiltersChange = async (filters: QuestFilters) => {
     try {
+      // Get current location for filtering
+      let currentLat = null;
+      let currentLng = null;
+      
+      if (userLocation) {
+        currentLat = userLocation.lat;
+        currentLng = userLocation.lng;
+      } else {
+        try {
+          const location = await getCurrentLocation();
+          currentLat = location.lat;
+          currentLng = location.lng;
+        } catch (error) {
+          console.error('Failed to get current location for filters:', error);
+        }
+      }
+      
       const params = new URLSearchParams();
       
       if (filters.category !== 'All') {
@@ -179,9 +201,9 @@ export default function Search() {
       if (filters.maxDuration > 0) {
         params.append('maxDuration', filters.maxDuration.toString());
       }
-      if (userLocation) {
-        params.append('lat', userLocation.lat.toString());
-        params.append('lng', userLocation.lng.toString());
+      if (currentLat && currentLng) {
+        params.append('lat', currentLat.toString());
+        params.append('lng', currentLng.toString());
         params.append('maxDistance', filters.maxDistance.toString());
       }
 

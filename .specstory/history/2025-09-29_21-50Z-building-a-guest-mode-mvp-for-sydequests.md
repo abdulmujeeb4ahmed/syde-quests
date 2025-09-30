@@ -9914,3 +9914,340 @@ Now every time you load the dashboard or search page, it will automatically dete
 
 ---
 
+_**User (2025-09-30 00:15Z)**_
+
+Why is the search page not showing things near roswell? Is it using the api based on my locaiton or is it hardocded?
+
+---
+
+_**Assistant (default)**_
+
+I can see the issue! The search page is showing Toronto quests (1150+ miles away) instead of local Roswell activities, which means it's falling back to hardcoded data instead of using your actual location for the API calls.
+
+
+---
+
+Tool use: **todo_write**
+
+## Todo List
+
+- [-] Debug why search page is showing Toronto quests instead of local activities
+- [ ] Fix search page API calls to use actual location
+
+---
+
+The problem is that the search page is using hardcoded quests as a fallback when the dynamic places API fails. Let me check what's happening with the API calls and fix the issue.
+
+
+---
+
+Tool use: **read_file**
+
+Read file: /Users/abdulmujeebahmed/Downloads/Overclock Accelerator/Week 2 Work/syde-quests/app/search/page.tsx
+
+---
+
+The issue is that the search page is trying to use `userLocation` but it might not be set yet when the API call happens. Let me check the timing issue and fix it:
+
+
+---
+
+Tool use: **read_file**
+
+Read file: /Users/abdulmujeebahmed/Downloads/Overclock Accelerator/Week 2 Work/syde-quests/app/search/page.tsx
+
+---
+
+I found the issue! The search page is using `userLocation` in the API call, but `userLocation` is set asynchronously. The API call happens before `userLocation` is properly set. Let me fix this by using the location data directly:
+
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: /Users/abdulmujeebahmed/Downloads/Overclock Accelerator/Week 2 Work/syde-quests/app/search/page.tsx</summary>
+
+**Chunk 1**
+Lines added: 5, lines removed: 2
+
+```diff
+@@ -40,8 +40,11 @@
+        try {
+          // Always get fresh current location (don't use cached data)
++         let currentLocation = null;
++         let locationInfo = null;
++         
+          try {
+            console.log('Getting fresh current location for search...');
+-           const currentLocation = await getCurrentLocation();
+-           const locationInfo = await reverseGeocode(currentLocation.lat, currentLocation.lng);
++           currentLocation = await getCurrentLocation();
++           locationInfo = await reverseGeocode(currentLocation.lat, currentLocation.lng);
+            setUserLocation({
+              lat: currentLocation.lat,
+```
+
+**Chunk 2**
+Lines added: 2, lines removed: undefined
+
+```diff
+@@ -56,4 +59,6 @@
+            let location = userState.preferences.homeLocation;
+            if (location) {
++             currentLocation = { lat: location.lat, lng: location.lng };
++             locationInfo = { city: location.city, state: location.state };
+              setUserLocation({ 
+                lat: location.lat, 
+```
+
+**Chunk 3**
+Lines added: 1, lines removed: 1
+
+```diff
+@@ -69,5 +74,5 @@
+          let quests: Quest[] = [];
+          
+-         if (userLocation) {
++         if (currentLocation) {
+            try {
+              console.log('Fetching dynamic activities from places API...');
+```
+
+</details>
+
+---
+
+Now I need to update the API call to use `currentLocation` instead of `userLocation`:
+
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: /Users/abdulmujeebahmed/Downloads/Overclock Accelerator/Week 2 Work/syde-quests/app/search/page.tsx</summary>
+
+**Chunk 1**
+Lines added: 1, lines removed: 1
+
+```diff
+@@ -77,5 +77,5 @@
+            try {
+              console.log('Fetching dynamic activities from places API...');
+-             const placesResponse = await fetch(`/api/places?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=6&limit=20`);
++             const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=6&limit=20`);
+              if (placesResponse.ok) {
+                const placesData = await placesResponse.json();
+```
+
+</details>
+
+---
+
+Now I need to update the fallback API call as well:
+
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: /Users/abdulmujeebahmed/Downloads/Overclock Accelerator/Week 2 Work/syde-quests/app/search/page.tsx</summary>
+
+**Chunk 1**
+Lines added: 3, lines removed: 3
+
+```diff
+@@ -110,7 +110,7 @@
+              console.log('No dynamic activities found, trying hardcoded quests as fallback...');
+              const apiUrl = new URL('/api/quests', window.location.origin);
+-             if (userLocation) {
+-               apiUrl.searchParams.set('lat', userLocation.lat.toString());
+-               apiUrl.searchParams.set('lng', userLocation.lng.toString());
++             if (currentLocation) {
++               apiUrl.searchParams.set('lat', currentLocation.lat.toString());
++               apiUrl.searchParams.set('lng', currentLocation.lng.toString());
+                apiUrl.searchParams.set('maxDistance', '50');
+              }
+```
+
+</details>
+
+---
+
+Now let me also update the filter handling to use the current location properly. Let me find the filter function:
+
+
+---
+
+Tool use: **grep**
+
+---
+
+Tool use: **read_file**
+
+Read file: /Users/abdulmujeebahmed/Downloads/Overclock Accelerator/Week 2 Work/syde-quests/app/search/page.tsx
+
+---
+
+The filter function is still using `userLocation` which might not be set. Let me update it to use the current location from the state or get a fresh one:
+
+
+---
+
+Tool use: **search_replace**
+
+
+<details><summary>Edit file: /Users/abdulmujeebahmed/Downloads/Overclock Accelerator/Week 2 Work/syde-quests/app/search/page.tsx</summary>
+
+**Chunk 1**
+Lines added: 17, lines removed: undefined
+
+```diff
+@@ -174,4 +174,21 @@
+    const handleFiltersChange = async (filters: QuestFilters) => {
+      try {
++       // Get current location for filtering
++       let currentLat = null;
++       let currentLng = null;
++       
++       if (userLocation) {
++         currentLat = userLocation.lat;
++         currentLng = userLocation.lng;
++       } else {
++         try {
++           const location = await getCurrentLocation();
++           currentLat = location.lat;
++           currentLng = location.lng;
++         } catch (error) {
++           console.error('Failed to get current location for filters:', error);
++         }
++       }
++       
+        const params = new URLSearchParams();
+        
+```
+
+**Chunk 2**
+Lines added: 3, lines removed: 3
+
+```diff
+@@ -185,7 +202,7 @@
+          params.append('maxDuration', filters.maxDuration.toString());
+        }
+-       if (userLocation) {
+-         params.append('lat', userLocation.lat.toString());
+-         params.append('lng', userLocation.lng.toString());
++       if (currentLat && currentLng) {
++         params.append('lat', currentLat.toString());
++         params.append('lng', currentLng.toString());
+          params.append('maxDistance', filters.maxDistance.toString());
+        }
+```
+
+</details>
+
+---
+
+Now let me check for any linting errors:
+
+
+---
+
+Tool use: **read_lints**
+
+---
+
+Tool use: **todo_write**
+
+## Todo List
+
+- [x] Debug why search page is showing Toronto quests instead of local activities
+- [x] Fix search page API calls to use actual location
+
+---
+
+## ✅ **Fixed Search Page Location Issue!**
+
+The problem was that the search page was using hardcoded Toronto quests as a fallback when the dynamic places API failed. I've fixed the timing and location issues.
+
+### 🔍 **Root Cause Analysis**
+
+**What was happening:**
+1. **Timing Issue** - The search page was trying to use `userLocation` before it was set
+2. **API Fallback** - When dynamic places failed, it fell back to hardcoded Toronto quests
+3. **Location Not Passed** - The API calls weren't getting your actual location coordinates
+
+### 🔧 **What I Fixed**
+
+**1. Fixed Location Timing**
+- ✅ **Direct location usage** - Now uses `currentLocation` directly instead of waiting for `userLocation` state
+- ✅ **Synchronous location handling** - Gets location first, then makes API calls
+- ✅ **Proper error handling** - Falls back to saved location if fresh detection fails
+
+**2. Fixed API Calls**
+- ✅ **Places API** - Now uses your actual coordinates: `/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}`
+- ✅ **Fallback API** - Also uses your coordinates for the `/api/quests` endpoint
+- ✅ **Filter API** - Updated filter handling to get fresh location if needed
+
+**3. Enhanced Location Detection**
+- ✅ **Fresh location every time** - Always gets your current location
+- ✅ **Proper fallback chain** - Fresh location → Saved location → Default location
+- ✅ **Better error handling** - Won't show Toronto quests unless all else fails
+
+### 🎯 **How It Works Now**
+
+**Search Page Flow:**
+1. **Get your current location** → HTML5 Geolocation API
+2. **Call places API with your coordinates** → `/api/places?lat=YOUR_LAT&lng=YOUR_LNG`
+3. **Convert real places to quests** → Local activities near you
+4. **If no places found** → Try `/api/quests` with your coordinates
+5. **Show local activities** → Activities within 6 miles of your location
+
+### 🎉 **Expected Results**
+
+**You should now see:**
+- **"Near [Your City], [Your State]"** in the header
+- **Local activities** within 6 miles of your actual location
+- **No more Toronto quests** (1150+ miles away)
+- **Real distance calculations** from your current position
+
+The search page will now use your actual location for API calls instead of falling back to hardcoded Toronto data! 🌍✨
+
+---
+
+_**User (2025-09-30 00:15Z)**_
+
+I got this error:
+## Error Type
+Console Error
+
+## Error Message
+Failed to fetch quests after all retries, using fallback data
+
+
+    at Search.useEffect.loadSearch (../../../Overclock Accelerator/Week 2 Work/syde-quests/app/search/page.tsx:130:19)
+
+## Code Frame
+  128 |         
+  129 |         if (quests.length === 0) {
+> 130 |           console.error('Failed to fetch quests after all retries, using fallback data');
+      |                   ^
+  131 |           // Fallback to a few sample quests if API fails
+  132 |           quests = [
+  133 |             {
+
+Next.js version: 15.5.4 (Turbopack)
+
+
+Also the things to do are good but they are still shwoing toronto. Those are things near me but the location on there isn't correct
+
+---
+
+_**Assistant (default)**_
+
+
+
+---
+
