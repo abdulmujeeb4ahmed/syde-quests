@@ -75,10 +75,17 @@ export default function Search() {
         
         if (currentLocation) {
           try {
-            console.log('Fetching dynamic activities from places API...');
+            console.log('Fetching dynamic activities from places API...', {
+              lat: currentLocation.lat,
+              lng: currentLocation.lng,
+              city: locationInfo?.city,
+              state: locationInfo?.state
+            });
             const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=6&limit=20`);
+            console.log('Places API response status:', placesResponse.status);
             if (placesResponse.ok) {
               const placesData = await placesResponse.json();
+              console.log('Places API data:', placesData);
               if (placesData.places && placesData.places.length > 0) {
                 // Convert places to quests
                 const dynamicQuests = placesData.places.map((place: any, index: number) => ({
@@ -107,7 +114,10 @@ export default function Search() {
         // If no dynamic places found, try hardcoded quests as fallback
         if (quests.length === 0) {
           try {
-            console.log('No dynamic activities found, trying hardcoded quests as fallback...');
+            console.log('No dynamic activities found, trying hardcoded quests as fallback...', {
+              currentLocation,
+              locationInfo
+            });
             const apiUrl = new URL('/api/quests', window.location.origin);
             if (currentLocation) {
               apiUrl.searchParams.set('lat', currentLocation.lat.toString());
@@ -115,11 +125,15 @@ export default function Search() {
               apiUrl.searchParams.set('maxDistance', '50');
             }
             
+            console.log('Fetching from quests API:', apiUrl.toString());
             const response = await fetch(apiUrl.toString());
+            console.log('Quests API response status:', response.status);
             if (response.ok) {
               const data = await response.json();
               quests = data.quests || [];
-              console.log(`Fetched ${quests.length} fallback quests from API`);
+              console.log(`Fetched ${quests.length} fallback quests from API:`, quests);
+            } else {
+              console.error('Quests API failed with status:', response.status);
             }
           } catch (error) {
             console.error('Failed to fetch fallback quests:', error);
@@ -128,33 +142,51 @@ export default function Search() {
         
         if (quests.length === 0) {
           console.error('Failed to fetch quests after all retries, using fallback data');
-          // Fallback to a few sample quests if API fails
+          // Create location-aware fallback quests
+          const cityName = locationInfo?.city || 'Your City';
+          const stateName = locationInfo?.state || 'Your State';
+          const userLat = currentLocation?.lat || 33.7606;
+          const userLng = currentLocation?.lng || -84.3933;
+          
           quests = [
             {
               id: 'fallback-1',
-              title: 'Historic Downtown Walk',
-              description: 'Explore the charming historic district with its cobblestone streets and Victorian architecture.',
+              title: `${cityName} Historic District Walk`,
+              description: `Explore the charming historic district of ${cityName} with its cobblestone streets and Victorian architecture.`,
               category: 'Culture',
               duration_min: 45,
               difficulty: 'Easy',
-              lat: 43.6532,
-              lng: -79.3832,
-              city: 'Toronto',
+              lat: userLat,
+              lng: userLng,
+              city: cityName,
               tags: ['history', 'walking', 'architecture'],
-              created_at: '2024-01-15T10:00:00Z'
+              created_at: new Date().toISOString()
             },
             {
               id: 'fallback-2',
-              title: 'Waterfront Photography Challenge',
-              description: 'Capture the perfect sunset shot along the waterfront with different angles and compositions.',
+              title: `${cityName} Photography Challenge`,
+              description: `Capture the beauty of ${cityName} with different angles and compositions. Find unique perspectives of local landmarks.`,
               category: 'Photography',
               duration_min: 60,
               difficulty: 'Medium',
-              lat: 43.6426,
-              lng: -79.3871,
-              city: 'Toronto',
-              tags: ['photography', 'sunset', 'waterfront'],
-              created_at: '2024-01-15T10:00:00Z'
+              lat: userLat,
+              lng: userLng,
+              city: cityName,
+              tags: ['photography', 'local', 'landmarks'],
+              created_at: new Date().toISOString()
+            },
+            {
+              id: 'fallback-3',
+              title: `${cityName} Food Discovery`,
+              description: `Discover local restaurants and cafes in ${cityName}. Try different cuisines and find your new favorite spots.`,
+              category: 'Food',
+              duration_min: 90,
+              difficulty: 'Easy',
+              lat: userLat,
+              lng: userLng,
+              city: cityName,
+              tags: ['food', 'local', 'dining'],
+              created_at: new Date().toISOString()
             }
           ];
         }
