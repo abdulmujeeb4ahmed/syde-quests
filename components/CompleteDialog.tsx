@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { completeQuest } from '@/lib/storage';
+import { useToast } from './ToastProvider';
 
 interface CompleteDialogProps {
   questId: string;
@@ -21,15 +22,18 @@ export default function CompleteDialog({
   const [rating, setRating] = useState(5);
   const [notes, setNotes] = useState('It was amazing!');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { showToast } = useToast();
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
       completeQuest(questId, rating, notes);
+      showToast('Quest completed! +50 points earned.', 'success');
       onComplete();
       onClose();
     } catch (error) {
       console.error('Failed to complete quest:', error);
+      showToast('Failed to complete quest. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }
