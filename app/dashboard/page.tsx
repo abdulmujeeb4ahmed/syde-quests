@@ -55,13 +55,24 @@ export default function Dashboard() {
         let currentLocation = null;
         let locationInfo = null;
         
-        // Always get fresh current location (don't use cached data)
-        console.log('Getting fresh current location...');
-        try {
-          currentLocation = await getCurrentLocation();
-          console.log('Got current location:', currentLocation);
-          locationInfo = await reverseGeocode(currentLocation.lat, currentLocation.lng);
-          console.log('Got location info:', locationInfo);
+          // Always get fresh current location (don't use cached data)
+          console.log('Getting fresh current location...');
+          try {
+            currentLocation = await getCurrentLocation();
+            console.log('Got current location:', currentLocation);
+            try {
+              locationInfo = await reverseGeocode(currentLocation.lat, currentLocation.lng);
+              console.log('Got location info:', locationInfo);
+            } catch (geocodingError) {
+              console.error('Geocoding failed, using coordinates:', geocodingError);
+              // Fallback to coordinate-based location
+              locationInfo = {
+                city: 'Your City',
+                state: 'Your State',
+                country: 'USA',
+                address: `${currentLocation.lat.toFixed(4)}, ${currentLocation.lng.toFixed(4)}`
+              };
+            }
           
           // Save the fresh location to user state
           const updatedState = {
@@ -118,16 +129,18 @@ export default function Dashboard() {
           console.log('No location data available:', { currentLocation, locationInfo });
         }
 
-        // Fetch dynamic activities from places API first
-        let quests: Quest[] = [];
-        
-        if (currentLocation) {
-          try {
-            console.log('Fetching dynamic activities from places API...');
-            const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=6&limit=20`);
-            if (placesResponse.ok) {
-              const placesData = await placesResponse.json();
-              if (placesData.places && placesData.places.length > 0) {
+          // Fetch dynamic activities from places API first
+          let quests: Quest[] = [];
+          
+          if (currentLocation) {
+            try {
+              console.log('Fetching dynamic activities from places API...');
+              const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=6&limit=20`, {
+                signal: AbortSignal.timeout(5000) // 5 second timeout
+              });
+              if (placesResponse.ok) {
+                const placesData = await placesResponse.json();
+                if (placesData.places && placesData.places.length > 0) {
                 // Convert places to quests
                 const dynamicQuests = placesData.places.map((place: any, index: number) => ({
                   id: `dynamic-${place.id}`,
@@ -163,12 +176,14 @@ export default function Dashboard() {
               apiUrl.searchParams.set('maxDistance', '50');
             }
             
-            const response = await fetch(apiUrl.toString());
-            if (response.ok) {
-              const data = await response.json();
-              quests = data.quests || [];
-              console.log(`Fetched ${quests.length} fallback quests from API`);
-            }
+              const response = await fetch(apiUrl.toString(), {
+                signal: AbortSignal.timeout(5000) // 5 second timeout
+              });
+              if (response.ok) {
+                const data = await response.json();
+                quests = data.quests || [];
+                console.log(`Fetched ${quests.length} fallback quests from API`);
+              }
           } catch (error) {
             console.error('Failed to fetch fallback quests:', error);
           }

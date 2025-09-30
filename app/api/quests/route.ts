@@ -3,22 +3,37 @@ import questData from '../../../data/quests.seed.json';
 import atlantaQuests from '../../../data/quests.atlanta.json';
 import { searchPlaces, Place } from '../../../lib/places-api';
 
+// Simple in-memory cache to prevent excessive API calls
+const cache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 // Convert places to quests
 function convertPlacesToQuests(places: Place[]): any[] {
-  return places.map((place, index) => ({
-    id: `dynamic-${place.id}`,
-    title: `${place.name} Discovery`,
-    description: place.description,
-    category: place.category,
-    duration_min: Math.floor(Math.random() * 120) + 30, // 30-150 minutes
-    difficulty: ['Easy', 'Medium', 'Hard'][Math.floor(Math.random() * 3)],
-    lat: place.lat,
-    lng: place.lng,
-    city: place.city,
-    tags: [place.category.toLowerCase(), 'local', 'discovery'],
-    cover_url: `https://images.unsplash.com/photo-${1500000000000 + index}?w=400`,
-    created_at: new Date().toISOString()
-  }));
+  return places.map((place, index) => {
+    // Create deterministic values based on place ID to avoid changing on each call
+    const hash = place.id.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    
+    const durationOptions = [45, 60, 90, 120, 150];
+    const difficultyOptions = ['Easy', 'Medium', 'Hard'];
+    
+    return {
+      id: `dynamic-${place.id}`,
+      title: `${place.name} Discovery`,
+      description: place.description,
+      category: place.category,
+      duration_min: durationOptions[Math.abs(hash) % durationOptions.length],
+      difficulty: difficultyOptions[Math.abs(hash) % difficultyOptions.length],
+      lat: place.lat,
+      lng: place.lng,
+      city: place.city,
+      tags: [place.category.toLowerCase(), 'local', 'discovery'],
+      cover_url: undefined, // Remove random images
+      created_at: new Date().toISOString()
+    };
+  });
 }
 
 export async function GET(request: Request) {
@@ -30,6 +45,16 @@ export async function GET(request: Request) {
     const lat = searchParams.get('lat');
     const lng = searchParams.get('lng');
     const maxDistance = searchParams.get('maxDistance');
+
+    // Create cache key
+    const cacheKey = `quests-${lat}-${lng}-${category}-${difficulty}-${maxDuration}-${maxDistance}`;
+    
+    // Check cache first
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log('API: Returning cached quests');
+      return NextResponse.json(cached.data);
+    }
 
     // Determine which quest data to use based on location
     let baseQuests = questData; // Default to Toronto quests
@@ -118,10 +143,18 @@ export async function GET(request: Request) {
       });
     }
 
-    return NextResponse.json({
+    const responseData = {
       quests: filteredQuests,
       total: filteredQuests.length,
+    };
+
+    // Cache the response
+    cache.set(cacheKey, {
+      data: responseData,
+      timestamp: Date.now()
     });
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Error fetching quests:', error);
     return NextResponse.json(

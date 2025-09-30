@@ -81,7 +81,9 @@ export default function Search() {
               city: locationInfo?.city,
               state: locationInfo?.state
             });
-            const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=6&limit=20`);
+            const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=6&limit=20`, {
+              signal: AbortSignal.timeout(5000) // 5 second timeout
+            });
             console.log('Places API response status:', placesResponse.status);
             if (placesResponse.ok) {
               const placesData = await placesResponse.json();

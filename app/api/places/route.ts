@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { searchPlaces, getPlacesByCategory, getPopularPlaces } from '../../../lib/places-api';
 
+// Simple in-memory cache to prevent excessive API calls
+const cache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -17,6 +21,16 @@ export async function GET(request: Request) {
         { error: 'Latitude and longitude are required' },
         { status: 400 }
       );
+    }
+
+    // Create cache key
+    const cacheKey = `places-${lat}-${lng}-${category}-${radius}-${limit}-${type}`;
+    
+    // Check cache first
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log('API: Returning cached places');
+      return NextResponse.json(cached.data);
     }
 
     const userLat = parseFloat(lat);
@@ -44,12 +58,20 @@ export async function GET(request: Request) {
         });
       }
 
-      return NextResponse.json({
+      const responseData = {
         places,
         total: places.length,
         location: { lat: userLat, lng: userLng },
         radius: searchRadius
+      };
+
+      // Cache the response
+      cache.set(cacheKey, {
+        data: responseData,
+        timestamp: Date.now()
       });
+
+      return NextResponse.json(responseData);
 
     } catch (apiError) {
       console.error('Places API error:', apiError);
@@ -84,13 +106,21 @@ export async function GET(request: Request) {
         }
       ];
 
-      return NextResponse.json({
+      const fallbackData = {
         places: fallbackPlaces,
         total: fallbackPlaces.length,
         location: { lat: userLat, lng: userLng },
         radius: searchRadius,
         fallback: true
+      };
+
+      // Cache the fallback response too
+      cache.set(cacheKey, {
+        data: fallbackData,
+        timestamp: Date.now()
       });
+
+      return NextResponse.json(fallbackData);
     }
 
   } catch (error) {

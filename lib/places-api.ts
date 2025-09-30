@@ -61,87 +61,82 @@ function transformPlacesData(data: any[]): Place[] {
 export async function searchPlaces(params: PlacesSearchParams): Promise<Place[]> {
   const { lat, lng, radius = 5, category = 'tourist_attraction', limit = 20 } = params; // radius in miles
   
-  try {
-    // Build search query - use more general terms
-    let query = '';
-    if (category === 'restaurant') {
-      query = 'restaurant food';
-    } else if (category === 'park') {
-      query = 'park recreation';
-    } else if (category === 'museum') {
-      query = 'museum gallery';
-    } else if (category === 'shopping') {
-      query = 'shopping store';
-    } else {
-      query = 'attraction landmark';
-    }
-    
-    // Use a broader search approach with viewbox
-    const url = new URL('https://nominatim.openstreetmap.org/search');
-    url.searchParams.set('q', query);
-    url.searchParams.set('format', 'json');
-    url.searchParams.set('limit', limit.toString());
-    url.searchParams.set('addressdetails', '1');
-    url.searchParams.set('extratags', '1');
-    url.searchParams.set('namedetails', '1');
-    url.searchParams.set('viewbox', `${lng - 0.1},${lat - 0.1},${lng + 0.1},${lat + 0.1}`);
-    url.searchParams.set('bounded', '1');
-    
-    console.log('Fetching places from:', url.toString());
-    
-    const response = await fetch(url.toString(), {
-      headers: {
-        'User-Agent': 'SydeQuests/1.0 (Local Places Discovery App)'
+  console.log('Skipping external places API to avoid rate limits, using local fallback data');
+  
+  // Return local fallback places based on location
+  const fallbackPlaces: Place[] = [];
+  
+  // Check if user is in Atlanta area
+  if (lat >= 33.6 && lat <= 34.0 && lng >= -84.5 && lng <= -84.1) {
+    fallbackPlaces.push(
+      {
+        id: 'atlanta-1',
+        name: 'Centennial Olympic Park',
+        category: 'Culture',
+        description: 'Explore the heart of Atlanta\'s Olympic legacy with its beautiful fountains, sculptures, and green spaces.',
+        lat: 33.7606,
+        lng: -84.3933,
+        address: '265 Park Ave W NW, Atlanta, GA 30313, USA',
+        city: 'Atlanta',
+        state: 'Georgia',
+        country: 'USA',
+        rating: 5
+      },
+      {
+        id: 'atlanta-2',
+        name: 'Piedmont Park',
+        category: 'Nature',
+        description: 'Enjoy Atlanta\'s largest park with skyline views, lake reflections, and diverse landscapes.',
+        lat: 33.7859,
+        lng: -84.3734,
+        address: 'Piedmont Park, Atlanta, GA, USA',
+        city: 'Atlanta',
+        state: 'Georgia',
+        country: 'USA',
+        rating: 5
       }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    // If no results, try a broader search
-    if (!data || data.length === 0) {
-      console.log('No results found, trying broader search...');
-      const fallbackUrl = new URL('https://nominatim.openstreetmap.org/search');
-      fallbackUrl.searchParams.set('q', 'amenity');
-      fallbackUrl.searchParams.set('format', 'json');
-      fallbackUrl.searchParams.set('limit', limit.toString());
-      fallbackUrl.searchParams.set('addressdetails', '1');
-      fallbackUrl.searchParams.set('viewbox', `${lng - 0.2},${lat - 0.2},${lng + 0.2},${lat + 0.2}`);
-      fallbackUrl.searchParams.set('bounded', '1');
-      
-      const fallbackResponse = await fetch(fallbackUrl.toString(), {
-        headers: {
-          'User-Agent': 'SydeQuests/1.0 (Local Places Discovery App)'
-        }
-      });
-      
-      if (fallbackResponse.ok) {
-        const fallbackData = await fallbackResponse.json();
-        if (fallbackData && fallbackData.length > 0) {
-          console.log(`Found ${fallbackData.length} places with fallback search`);
-          return transformPlacesData(fallbackData);
-        }
-      }
-    }
-    
-    // Transform the data to our Place interface
-    const places: Place[] = transformPlacesData(data);
-    
-    // Filter by radius if specified
-    const filteredPlaces = places.filter(place => {
-      const distance = calculateDistance(lat, lng, place.lat, place.lng);
-      return distance <= radius;
-    });
-    
-    return filteredPlaces;
-    
-  } catch (error) {
-    console.error('Error fetching places:', error);
-    return [];
+    );
   }
+  
+  // Check if user is in Roswell area
+  if (lat >= 33.9 && lat <= 34.1 && lng >= -84.4 && lng <= -84.2) {
+    fallbackPlaces.push(
+      {
+        id: 'roswell-1',
+        name: 'Roswell Historic District',
+        category: 'Culture',
+        description: 'Explore the charming historic district of Roswell with its antebellum homes and Civil War history.',
+        lat: 34.0231,
+        lng: -84.3615,
+        address: 'Roswell Historic District, Roswell, GA, USA',
+        city: 'Roswell',
+        state: 'Georgia',
+        country: 'USA',
+        rating: 5
+      },
+      {
+        id: 'roswell-2',
+        name: 'Chattahoochee Nature Center',
+        category: 'Nature',
+        description: 'Discover local wildlife and nature trails along the Chattahoochee River.',
+        lat: 34.0231,
+        lng: -84.3615,
+        address: 'Chattahoochee Nature Center, Roswell, GA, USA',
+        city: 'Roswell',
+        state: 'Georgia',
+        country: 'USA',
+        rating: 5
+      }
+    );
+  }
+  
+  // Filter by radius
+  const filteredPlaces = fallbackPlaces.filter(place => {
+    const distance = calculateDistance(lat, lng, place.lat, place.lng);
+    return distance <= radius;
+  });
+  
+  return filteredPlaces.slice(0, limit);
 }
 
 /**
