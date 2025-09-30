@@ -32,6 +32,7 @@ export default function Search() {
   const [filteredQuests, setFilteredQuests] = useState<Quest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [apiCallInProgress, setApiCallInProgress] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -76,7 +77,8 @@ export default function Search() {
         const cachedQuests = getCachedQuests();
         let quests: Quest[] = [];
         
-        if (currentLocation) {
+        if (currentLocation && !apiCallInProgress) {
+          setApiCallInProgress(true);
           try {
             console.log('Fetching dynamic quests from places API...', {
               lat: currentLocation.lat,
@@ -85,9 +87,15 @@ export default function Search() {
               state: locationInfo?.state
             });
             
+            // Create abort controller for better timeout handling
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+            
             const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=6&limit=10`, {
-              signal: AbortSignal.timeout(5000) // 5 second timeout
+              signal: controller.signal
             });
+            
+            clearTimeout(timeoutId);
             
             console.log('Places API response status:', placesResponse.status);
             
@@ -108,7 +116,8 @@ export default function Search() {
                   setToast({ message: placesData.error, type: 'info' });
                 }
               } else {
-                throw new Error('No quests returned from API');
+                console.log('No quests returned from API, will use fallback data');
+                // Don't throw error, just continue to fallback logic below
               }
             } else {
               throw new Error(`HTTP error! status: ${placesResponse.status}`);
@@ -124,6 +133,8 @@ export default function Search() {
             } else {
               setToast({ message: 'Couldn\'t load dynamic quests, showing fallback quests instead.', type: 'error' });
             }
+          } finally {
+            setApiCallInProgress(false);
           }
         }
         

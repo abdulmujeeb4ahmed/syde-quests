@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     // Check cache first
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      console.log('API: Returning cached places');
+      console.log('API: Returning cached quests');
       return NextResponse.json(cached.data);
     }
 
@@ -51,20 +51,33 @@ export async function GET(request: Request) {
         // Use Google Places API for dynamic quests
         console.log('User is outside Atlanta, fetching dynamic quests from Google Places');
         
-        // Map category to Google Places type
-        const googleType = mapCategoryToGoogleType(category || 'tourist_attraction');
-        
-        // Search Google Places
-        const googlePlaces = await searchGooglePlaces(
-          userLat, 
-          userLng, 
-          searchRadius * 1000, // Convert miles to meters
-          googleType,
-          10 // Limit to top 10 results
-        );
+        // Check if we have a Google Places API key
+        const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+        if (!apiKey) {
+          console.log('No Google Places API key found, using fallback quests immediately');
+          quests = getFallbackQuests(userLat, userLng);
+        } else {
+          // Map category to Google Places type
+          const googleType = mapCategoryToGoogleType(category || 'tourist_attraction');
+          
+          // Search Google Places
+          const googlePlaces = await searchGooglePlaces(
+            userLat, 
+            userLng, 
+            searchRadius * 1000, // Convert miles to meters
+            googleType,
+            10 // Limit to top 10 results
+          );
 
-        // Map Google Places to quest objects
-        quests = googlePlaces.map((place, index) => mapPlaceToQuest(place, index));
+          // Map Google Places to quest objects
+          if (googlePlaces.length > 0) {
+            quests = googlePlaces.map((place, index) => mapPlaceToQuest(place, index));
+          } else {
+            console.log('No Google Places found, using fallback quests');
+            // Use fallback quests if no Google Places results
+            quests = getFallbackQuests(userLat, userLng);
+          }
+        }
       }
 
       const responseData = {
@@ -165,4 +178,74 @@ function mapCategoryToGoogleType(category: string): string {
   };
 
   return categoryMap[category] || 'tourist_attraction';
+}
+
+/**
+ * Get fallback quests when Google Places API fails or returns no results
+ */
+function getFallbackQuests(lat: number, lng: number): QuestObject[] {
+  // Generate some generic quests based on location
+  const city = extractCityFromLocation(lat, lng);
+  
+  return [
+    {
+      id: `fallback-1-${Date.now()}`,
+      title: `${city} City Center Exploration`,
+      description: `Discover the heart of ${city} with its unique local attractions, shops, and cultural landmarks. Perfect for getting to know the area.`,
+      category: 'Culture',
+      lat: lat,
+      lng: lng,
+      duration_min: 90,
+      difficulty: 'Easy',
+      city: city,
+      tags: ['exploration', 'local', 'culture', 'walking'],
+      cover_url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400',
+      created_at: new Date().toISOString()
+    },
+    {
+      id: `fallback-2-${Date.now()}`,
+      title: `${city} Food Discovery`,
+      description: `Taste the local flavors of ${city}. Find authentic restaurants and cafes that showcase the area's culinary culture.`,
+      category: 'Food',
+      lat: lat + 0.001, // Slightly offset location
+      lng: lng + 0.001,
+      duration_min: 120,
+      difficulty: 'Easy',
+      city: city,
+      tags: ['food', 'local', 'dining', 'culture'],
+      cover_url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400',
+      created_at: new Date().toISOString()
+    },
+    {
+      id: `fallback-3-${Date.now()}`,
+      title: `${city} Nature Walk`,
+      description: `Explore the natural beauty around ${city}. Find parks, trails, or scenic spots to enjoy the outdoors.`,
+      category: 'Nature',
+      lat: lat - 0.001,
+      lng: lng - 0.001,
+      duration_min: 60,
+      difficulty: 'Easy',
+      city: city,
+      tags: ['nature', 'walking', 'outdoor', 'peaceful'],
+      cover_url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400',
+      created_at: new Date().toISOString()
+    }
+  ];
+}
+
+/**
+ * Extract city name from coordinates (simplified)
+ */
+function extractCityFromLocation(lat: number, lng: number): string {
+  // This is a simplified approach - in a real app you'd use reverse geocoding
+  // For now, return a generic city name based on region
+  if (lat >= 40 && lat <= 42 && lng >= -75 && lng <= -73) {
+    return 'New York';
+  } else if (lat >= 33 && lat <= 35 && lng >= -85 && lng <= -83) {
+    return 'Georgia';
+  } else if (lat >= 34 && lat <= 35 && lng >= -119 && lng <= -117) {
+    return 'Los Angeles';
+  } else {
+    return 'Local Area';
+  }
 }

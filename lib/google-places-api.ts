@@ -62,7 +62,7 @@ export async function searchGooglePlaces(
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
     
     if (!apiKey) {
-      console.warn('Google Places API key not found, using fallback data');
+      console.warn('Google Places API key not found, returning empty results');
       return [];
     }
 
@@ -73,6 +73,7 @@ export async function searchGooglePlaces(
         type: type as any,
         key: apiKey,
       },
+      timeout: 5000, // 5 second timeout for Google API call
     });
 
     if (response.data.results) {

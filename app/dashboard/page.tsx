@@ -36,6 +36,7 @@ export default function Dashboard() {
   const [questOfTheDay, setQuestOfTheDay] = useState<Quest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [apiCallInProgress, setApiCallInProgress] = useState(false);
 
   // Debug userLocation state changes
   useEffect(() => {
@@ -136,12 +137,20 @@ export default function Dashboard() {
           const cachedQuests = getCachedQuests();
           let quests: Quest[] = [];
           
-          if (currentLocation) {
+          if (currentLocation && !apiCallInProgress) {
+            setApiCallInProgress(true);
             try {
               console.log('Fetching dynamic quests from places API...');
+              
+              // Create abort controller for better timeout handling
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+              
               const placesResponse = await fetch(`/api/places?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=6&limit=10`, {
-                signal: AbortSignal.timeout(5000) // 5 second timeout
+                signal: controller.signal
               });
+              
+              clearTimeout(timeoutId);
               
               if (placesResponse.ok) {
                 const placesData = await placesResponse.json();
@@ -159,7 +168,8 @@ export default function Dashboard() {
                     setToast({ message: placesData.error, type: 'info' });
                   }
                 } else {
-                  throw new Error('No quests returned from API');
+                  console.log('No quests returned from API, will use fallback data');
+                  // Don't throw error, just continue to fallback logic below
                 }
               } else {
                 throw new Error(`HTTP error! status: ${placesResponse.status}`);
@@ -173,8 +183,11 @@ export default function Dashboard() {
                 quests = cachedQuests.quests;
                 setToast({ message: 'Using cached quests (offline mode)', type: 'info' });
               } else {
+                console.log('No cached quests available, will use hardcoded fallback');
                 setToast({ message: 'Couldn\'t load dynamic quests, showing fallback quests instead.', type: 'error' });
               }
+            } finally {
+              setApiCallInProgress(false);
             }
           }
         
