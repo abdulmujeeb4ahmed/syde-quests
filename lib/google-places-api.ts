@@ -18,6 +18,8 @@ export interface QuestObject {
   tags?: string[];
   cover_url?: string;
   created_at?: string;
+  distance_km?: number;
+  distance_miles?: number;
 }
 
 export interface GooglePlaceResult {
@@ -363,10 +365,3 @@ function generateFallbackImage(types: string[]): string {
   return 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400'; // Default city image
 }
 
-/**
- * Check if user is in Atlanta area
- */
-export function isInAtlanta(lat: number, lng: number): boolean {
-  // Atlanta area bounds: roughly 33.6 to 34.0 lat, -84.5 to -84.1 lng
-  return lat >= 33.6 && lat <= 34.0 && lng >= -84.5 && lng <= -84.1;
-}

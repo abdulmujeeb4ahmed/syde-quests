@@ -106,117 +106,36 @@ export default function Search() {
               // Handle the new quest format
               if (placesData.quests && placesData.quests.length > 0) {
                 quests = placesData.quests;
-                console.log(`Found ${quests.length} dynamic quests from ${placesData.source}`);
+                console.log(`Found ${quests.length} real places from Google Places`);
                 
                 // Cache the quests for offline use
-                cacheQuests(quests, { lat: currentLocation.lat, lng: currentLocation.lng }, placesData.source);
-                
-                // Show toast if there was an error but fallback data was used
-                if (placesData.error) {
-                  setToast({ message: placesData.error, type: 'info' });
-                }
+                cacheQuests(quests, { lat: currentLocation.lat, lng: currentLocation.lng }, 'google_places');
               } else {
-                console.log('No quests returned from API, will use fallback data');
-                // Don't throw error, just continue to fallback logic below
+                console.log('No real places found');
+                setToast({ message: 'No real places found in your area. Try expanding your search radius.', type: 'info' });
               }
             } else {
               throw new Error(`HTTP error! status: ${placesResponse.status}`);
             }
           } catch (error) {
-            console.error('Failed to fetch dynamic quests:', error);
+            console.error('Failed to fetch real places:', error);
             
             // Try to use cached quests if available
             if (cachedQuests) {
-              console.log('Using cached quests as fallback');
+              console.log('Using cached real places');
               quests = cachedQuests.quests;
-              setToast({ message: 'Using cached quests (offline mode)', type: 'info' });
+              setToast({ message: 'Using cached real places (offline mode)', type: 'info' });
             } else {
-              setToast({ message: 'Couldn\'t load dynamic quests, showing fallback quests instead.', type: 'error' });
+              setToast({ message: 'Couldn\'t load real places. Please check your internet connection and try again.', type: 'error' });
             }
           } finally {
             setApiCallInProgress(false);
           }
         }
         
-        // If no dynamic places found, try hardcoded quests as fallback
-        if (quests.length === 0) {
-          try {
-            console.log('No dynamic activities found, trying hardcoded quests as fallback...', {
-              currentLocation,
-              locationInfo
-            });
-            const apiUrl = new URL('/api/quests', window.location.origin);
-            if (currentLocation) {
-              apiUrl.searchParams.set('lat', currentLocation.lat.toString());
-              apiUrl.searchParams.set('lng', currentLocation.lng.toString());
-              apiUrl.searchParams.set('maxDistance', '50');
-            }
-            
-            console.log('Fetching from quests API:', apiUrl.toString());
-            const response = await fetch(apiUrl.toString());
-            console.log('Quests API response status:', response.status);
-            if (response.ok) {
-              const data = await response.json();
-              quests = data.quests || [];
-              console.log(`Fetched ${quests.length} fallback quests from API:`, quests);
-            } else {
-              console.error('Quests API failed with status:', response.status);
-            }
-          } catch (error) {
-            console.error('Failed to fetch fallback quests:', error);
-          }
-        }
+        // Only use real places - no hardcoded fallback quests
         
-        if (quests.length === 0) {
-          console.error('Failed to fetch quests after all retries, using fallback data');
-          // Create location-aware fallback quests
-          const cityName = locationInfo?.city || 'Your City';
-          const stateName = locationInfo?.state || 'Your State';
-          const userLat = currentLocation?.lat || 33.7606;
-          const userLng = currentLocation?.lng || -84.3933;
-          
-          quests = [
-            {
-              id: 'fallback-1',
-              title: `${cityName} Historic District Walk`,
-              description: `Explore the charming historic district of ${cityName} with its cobblestone streets and Victorian architecture.`,
-              category: 'Culture',
-              duration_min: 45,
-              difficulty: 'Easy',
-              lat: userLat,
-              lng: userLng,
-              city: cityName,
-              tags: ['history', 'walking', 'architecture'],
-              created_at: new Date().toISOString()
-            },
-            {
-              id: 'fallback-2',
-              title: `${cityName} Photography Challenge`,
-              description: `Capture the beauty of ${cityName} with different angles and compositions. Find unique perspectives of local landmarks.`,
-              category: 'Photography',
-              duration_min: 60,
-              difficulty: 'Medium',
-              lat: userLat,
-              lng: userLng,
-              city: cityName,
-              tags: ['photography', 'local', 'landmarks'],
-              created_at: new Date().toISOString()
-            },
-            {
-              id: 'fallback-3',
-              title: `${cityName} Food Discovery`,
-              description: `Discover local restaurants and cafes in ${cityName}. Try different cuisines and find your new favorite spots.`,
-              category: 'Food',
-              duration_min: 90,
-              difficulty: 'Easy',
-              lat: userLat,
-              lng: userLng,
-              city: cityName,
-              tags: ['food', 'local', 'dining'],
-              created_at: new Date().toISOString()
-            }
-          ];
-        }
+        // Only use real places - no fallback quest creation
         
         setAllQuests(quests);
         setFilteredQuests(quests);

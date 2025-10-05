@@ -25,19 +25,25 @@ export default function QuestList({ quests, showDistance = true, userLocation }:
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {quests.map((quest) => {
+        // Use distance from API if available, otherwise calculate it
         let distance: number | undefined;
         
-        if (showDistance && userLocation) {
-          // Calculate distance for display
-          const R = 6371; // Earth's radius in kilometers
-          const dLat = (quest.lat - userLocation.lat) * Math.PI / 180;
-          const dLng = (quest.lng - userLocation.lng) * Math.PI / 180;
-          const a = 
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(userLocation.lat * Math.PI / 180) * Math.cos(quest.lat * Math.PI / 180) *
-            Math.sin(dLng / 2) * Math.sin(dLng / 2);
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-          distance = R * c;
+        if (showDistance) {
+          // First try to use distance from API (for real places)
+          if ((quest as any).distance_km !== undefined) {
+            distance = (quest as any).distance_km;
+          } else if (userLocation) {
+            // Fallback to calculating distance for hardcoded quests
+            const R = 6371; // Earth's radius in kilometers
+            const dLat = (quest.lat - userLocation.lat) * Math.PI / 180;
+            const dLng = (quest.lng - userLocation.lng) * Math.PI / 180;
+            const a = 
+              Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(userLocation.lat * Math.PI / 180) * Math.cos(quest.lat * Math.PI / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            distance = R * c;
+          }
         }
 
         return (

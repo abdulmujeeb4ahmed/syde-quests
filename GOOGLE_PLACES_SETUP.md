@@ -1,124 +1,148 @@
-# Google Places API Setup
+# Google Places API Setup Guide
 
 ## Overview
-The app now integrates with Google Places API to provide dynamic quests based on the user's location. If the user is in Atlanta, it uses seeded Atlanta quests; otherwise, it fetches dynamic quests from Google Places.
+The app now exclusively uses real places from Google Places API. No prewritten quests or fallbacks are provided - you need a valid Google Places API key to see any quests.
 
-## Setup Instructions
+## Quick Setup (5 minutes)
 
-### 1. Get Google Places API Key
+### 1. Create Google Cloud Project
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
-3. Enable the following APIs:
-   - Places API
-   - Places API (New)
-   - Maps JavaScript API (if using client-side maps)
+2. Click "Select a project" → "New Project"
+3. Enter project name: "SydeQuests" (or any name you prefer)
+4. Click "Create"
 
-### 2. Create API Credentials
-1. Go to "Credentials" in the Google Cloud Console
+### 2. Enable Required APIs
+1. In the Google Cloud Console, go to "APIs & Services" → "Library"
+2. Search for and enable these APIs:
+   - **Places API** (New)
+   - **Places API** (Legacy)
+   - **Maps JavaScript API** (optional, for future map features)
+
+### 3. Create API Key
+1. Go to "APIs & Services" → "Credentials"
 2. Click "Create Credentials" → "API Key"
 3. Copy the generated API key
 
-### 3. Configure Environment Variables
-Create a `.env.local` file in the project root and add:
+### 4. Configure Environment Variables
+Create a `.env.local` file in your project root:
 
 ```bash
-GOOGLE_PLACES_API_KEY=your_google_places_api_key_here
+GOOGLE_PLACES_API_KEY=your_api_key_here
 ```
 
-### 4. API Restrictions (Recommended)
-For security, restrict your API key:
+### 5. Test the Setup
+1. Restart your development server: `npm run dev`
+2. Open the app and check the dashboard
+3. You should see real places from Google Places API with distance information
+
+## Security Best Practices
+
+### API Key Restrictions (Recommended)
 1. Go to your API key in Google Cloud Console
-2. Under "Application restrictions", select "HTTP referrers" or "IP addresses"
-3. Under "API restrictions", select "Restrict key" and choose only the APIs you need
+2. Under "Application restrictions":
+   - Select "HTTP referrers"
+   - Add: `localhost:3000/*` (for development)
+   - Add: `yourdomain.com/*` (for production)
+3. Under "API restrictions":
+   - Select "Restrict key"
+   - Choose only: Places API (New), Places API (Legacy)
 
 ## Features
 
-### Dynamic Quest Generation
-- Maps Google Places results to quest objects
-- Generates engaging quest titles and descriptions
-- Estimates difficulty and duration based on place type
-- Categorizes places into quest categories (Culture, Art, Nature, Food, etc.)
+### Real Places Only
+- **No prewritten quests**: All quests come from real Google Places
+- **Distance calculation**: Shows exact distance from your current location
+- **Sorted by proximity**: Closest places appear first
+- **Real place data**: Actual restaurants, museums, parks, etc.
 
-### Location-Based Logic
-- **Atlanta Area**: Uses seeded Atlanta quests from `data/quests.atlanta.json`
-- **Other Locations**: Fetches dynamic quests from Google Places API
-- **Fallback**: Shows hardcoded fallback quests if API fails
+### Quest Generation
+Each real place is converted into a quest with:
+- **Engaging titles**: "Discover [Place Name]", "Explore [Place Name]"
+- **Rich descriptions**: Generated based on place type and reviews
+- **Smart categorization**: Museums → Culture, Parks → Nature, etc.
+- **Difficulty estimation**: Based on place type and user ratings
+- **Duration estimation**: Based on place type and popularity
 
-### Caching & Offline Support
-- Caches quest data in localStorage for 24 hours
-- Shows cached quests when offline or API fails
-- Displays toast notifications for user feedback
-
-### Error Handling
-- Graceful fallback to cached or hardcoded data
-- Toast notifications for error states
-- Detailed error logging for debugging
+### Distance Display
+- **Kilometers and miles**: Both units calculated
+- **Visual indicators**: Distance shown on quest cards
+- **Sorted results**: Closest places first
+- **Real-time accuracy**: Based on your exact GPS location
 
 ## API Response Format
-
-The `/api/places` endpoint now returns:
 
 ```json
 {
   "quests": [
     {
       "id": "google-quest-123",
-      "title": "Discover Museum of Art",
-      "description": "Immerse yourself in culture and history...",
+      "title": "Discover Atlanta History Center",
+      "description": "Immerse yourself in culture and history at Atlanta History Center...",
       "category": "Culture",
-      "lat": 40.7128,
-      "lng": -74.0060,
+      "lat": 33.8417,
+      "lng": -84.3768,
       "duration_min": 120,
       "difficulty": "Medium",
-      "city": "New York",
+      "city": "Atlanta",
       "tags": ["culture", "history", "education", "artifacts"],
       "cover_url": "https://maps.googleapis.com/...",
-      "created_at": "2024-01-15T10:00:00Z"
+      "created_at": "2024-01-15T10:00:00Z",
+      "distance_km": 2.3,
+      "distance_miles": 1.4
     }
   ],
   "total": 10,
-  "location": { "lat": 40.7128, "lng": -74.0060 },
+  "location": { "lat": 33.7606, "lng": -84.3933 },
   "radius": 5,
   "source": "google_places"
 }
 ```
 
-## Quest Mapping Logic
+## Cost Information
 
-### Categories
-- `museum` → Culture
-- `art_gallery` → Art
-- `park` → Nature
-- `restaurant` → Food
-- `shopping_mall` → Shopping
-- `historical_site` → History
-- `amusement_park` → Adventure
+### Google Places API Pricing
+- **Places Nearby Search**: $32 per 1,000 requests
+- **Place Details**: $17 per 1,000 requests
+- **Photos**: $7 per 1,000 requests
 
-### Difficulty Estimation
-- Based on place type and user ratings
-- `hiking_area`, `climbing` → Hard
-- `museum`, `art_gallery` → Medium
-- Most tourist attractions → Easy
+### Cost Optimization
+- **Limited results**: Only 10 places per request
+- **Caching**: 24-hour cache prevents duplicate requests
+- **Efficient queries**: Single API call per location
+- **Estimated monthly cost**: $5-20 for moderate usage
 
-### Duration Estimation
-- Museums: 120 minutes
-- Art galleries: 90 minutes
-- Parks: 60 minutes
-- Restaurants: 90 minutes
-- Adjusted based on popularity (more ratings = longer duration)
+## Troubleshooting
 
-## Testing
+### No Quests Showing
+1. **Check API key**: Verify `GOOGLE_PLACES_API_KEY` is set in `.env.local`
+2. **Restart server**: Run `npm run dev` after adding environment variable
+3. **Check console**: Look for API key errors in browser console
+4. **Verify APIs enabled**: Ensure Places API is enabled in Google Cloud Console
 
-1. **Without API Key**: App will show fallback quests with error toast
-2. **With API Key**: App will fetch dynamic quests from Google Places
-3. **Atlanta Location**: App will use seeded Atlanta quests regardless of API key
-4. **Offline Mode**: App will use cached quests if available
+### Error Messages
+- **"Google Places API key required"**: Add API key to `.env.local`
+- **"Failed to fetch real places"**: Check internet connection and API key validity
+- **"No real places found"**: Try expanding search radius or moving to a more populated area
 
-## Cost Considerations
+### Development vs Production
+- **Development**: Use `localhost:3000/*` in API key restrictions
+- **Production**: Add your domain to HTTP referrers
+- **Testing**: Use different API keys for dev/staging/production
 
-Google Places API pricing:
-- Places Nearby Search: $32 per 1,000 requests
-- Place Details: $17 per 1,000 requests
-- Photos: $7 per 1,000 requests
+## Next Steps
 
-The app is configured to limit results to 10 per request and caches data for 24 hours to minimize API calls.
+1. **Set up API key** following the steps above
+2. **Test with your location** to see real places
+3. **Customize categories** by modifying `mapCategoryToGoogleType()` function
+4. **Add more place types** by updating the Google Places API type mapping
+5. **Consider adding filters** for place types, ratings, or distance
+
+## Support
+
+If you encounter issues:
+1. Check the browser console for error messages
+2. Verify your API key is correctly configured
+3. Ensure you have sufficient Google Cloud billing set up
+4. Check that all required APIs are enabled
+
+The app is now optimized for real places only - enjoy discovering actual locations in your area!

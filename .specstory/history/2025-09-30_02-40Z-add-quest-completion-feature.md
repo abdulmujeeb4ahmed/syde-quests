@@ -265,6 +265,22 @@ Let me check if there are any linting errors in the files I've created:
 
 Tool use: **read_lints**
 
+<details>
+          <summary>Read lints for 4 files</summary>
+      
+Lint paths:
+
+- `/Users/abdulmujeebahmed/Downloads/Overclock Accelerator/Week 2 Work/syde-quests/components/Toast.tsx`
+- `/Users/abdulmujeebahmed/Downloads/Overclock Accelerator/Week 2 Work/syde-quests/components/ToastProvider.tsx`
+- `/Users/abdulmujeebahmed/Downloads/Overclock Accelerator/Week 2 Work/syde-quests/components/CompleteDialog.tsx`
+- `/Users/abdulmujeebahmed/Downloads/Overclock Accelerator/Week 2 Work/syde-quests/app/layout.tsx`
+
+Lint results
+
+
+**No lint errors found**
+</details>
+
 ---
 
 Perfect! Now let me test the badge system by checking the storage logic:

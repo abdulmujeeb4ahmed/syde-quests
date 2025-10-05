@@ -158,98 +158,43 @@ export default function Dashboard() {
                 // Handle the new quest format
                 if (placesData.quests && placesData.quests.length > 0) {
                   quests = placesData.quests;
-                  console.log(`Found ${quests.length} dynamic quests from ${placesData.source}`);
+                  console.log(`Found ${quests.length} real places from Google Places`);
                   
                   // Cache the quests for offline use
-                  cacheQuests(quests, { lat: currentLocation.lat, lng: currentLocation.lng }, placesData.source);
-                  
-                  // Show toast if there was an error but fallback data was used
-                  if (placesData.error) {
-                    setToast({ message: placesData.error, type: 'info' });
-                  }
+                  cacheQuests(quests, { lat: currentLocation.lat, lng: currentLocation.lng }, 'google_places');
                 } else {
-                  console.log('No quests returned from API, will use fallback data');
-                  // Don't throw error, just continue to fallback logic below
+                  console.log('No real places found');
+                  setToast({ message: 'No real places found in your area. Try expanding your search radius.', type: 'info' });
                 }
               } else {
+                const errorData = await placesResponse.json();
+                console.error('API Error:', errorData.error);
+                setToast({ message: errorData.error || 'Failed to fetch real places', type: 'error' });
                 throw new Error(`HTTP error! status: ${placesResponse.status}`);
               }
             } catch (error) {
-              console.error('Failed to fetch dynamic quests:', error);
+              console.error('Failed to fetch real places:', error);
               
               // Try to use cached quests if available
               if (cachedQuests) {
-                console.log('Using cached quests as fallback');
+                console.log('Using cached real places');
                 quests = cachedQuests.quests;
-                setToast({ message: 'Using cached quests (offline mode)', type: 'info' });
+                setToast({ message: 'Using cached real places (offline mode)', type: 'info' });
               } else {
-                console.log('No cached quests available, will use hardcoded fallback');
-                setToast({ message: 'Couldn\'t load dynamic quests, showing fallback quests instead.', type: 'error' });
+                console.log('No cached quests available');
+                setToast({ message: 'Couldn\'t load real places. Please check your internet connection and try again.', type: 'error' });
               }
             } finally {
               setApiCallInProgress(false);
             }
           }
         
-        // If no dynamic places found, try hardcoded quests as fallback
+        // Only use real places - no hardcoded fallback quests
         if (quests.length === 0) {
-          try {
-            console.log('No dynamic activities found, trying hardcoded quests as fallback...');
-            const apiUrl = new URL('/api/quests', window.location.origin);
-            if (currentLocation) {
-              apiUrl.searchParams.set('lat', currentLocation.lat.toString());
-              apiUrl.searchParams.set('lng', currentLocation.lng.toString());
-              apiUrl.searchParams.set('maxDistance', '50');
-            }
-            
-              const response = await fetch(apiUrl.toString(), {
-                signal: AbortSignal.timeout(5000) // 5 second timeout
-              });
-              if (response.ok) {
-                const data = await response.json();
-                quests = data.quests || [];
-                console.log(`Fetched ${quests.length} fallback quests from API`);
-              }
-          } catch (error) {
-            console.error('Failed to fetch fallback quests:', error);
-          }
+          console.log('No real places found - user will need to configure Google Places API key');
         }
         
-        if (quests.length === 0) {
-          console.log('No quests found, creating location-based fallback quests');
-          // Create location-aware fallback quests
-          const cityName = locationInfo?.city || 'Your City';
-          const stateName = locationInfo?.state || 'Your State';
-          
-          quests = [
-            {
-              id: 'fallback-1',
-              title: `${cityName} Historic District Walk`,
-              description: `Explore the charming historic district of ${cityName} with its unique architecture and local landmarks.`,
-              category: 'Culture',
-              duration_min: 45,
-              difficulty: 'Easy',
-              lat: currentLocation?.lat || 33.7606,
-              lng: currentLocation?.lng || -84.3933,
-              city: cityName,
-              tags: ['history', 'walking', 'architecture'],
-              created_at: '2024-01-15T10:00:00Z'
-            },
-            {
-              id: 'fallback-2',
-              title: `${cityName} Photography Challenge`,
-              description: `Capture the perfect shots around ${cityName} with different angles and compositions.`,
-              category: 'Photography',
-              duration_min: 60,
-              difficulty: 'Medium',
-              lat: currentLocation?.lat || 33.7606,
-              lng: currentLocation?.lng || -84.3933,
-              city: cityName,
-              tags: ['photography', 'local', 'exploration'],
-              created_at: '2024-01-15T10:00:00Z'
-            }
-          ];
-        }
+        // Only use real places - no fallback quest creation
 
         // Show all available quests as recommendations (up to 6)
         const recommendations = quests.slice(0, 6);
